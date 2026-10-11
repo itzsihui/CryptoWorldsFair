@@ -11,7 +11,7 @@ import {
   recordSpend,
   formatSizingSummary,
 } from "@/lib/buyer-account";
-import { toAtomic } from "@/lib/config";
+import { config, toAtomic } from "@/lib/config";
 import { readDemoSession, writeDemoSession } from "@/lib/demo-session";
 import {
   accrueOwnershipFromPurchase,
@@ -963,7 +963,7 @@ export default function BuyerPage() {
             title:
               rail === "visa"
                 ? `Settling Visa · ${lines.length} locked quote(s)`
-                : `Settling x402 on Arbitrum · ${lines.length} locked quote(s)`,
+                : `Settling x402 on ${config.chainLabel} · ${lines.length} locked quote(s)`,
             status: "active",
             capability: "privileged",
             description: "Authorized — each SKU settles on its locked quote…",
@@ -1043,7 +1043,7 @@ export default function BuyerPage() {
                 title: `x402 handshake · ${line.title}`,
                 status: "active",
                 capability: "privileged",
-                description: "Agent ↔ store ↔ BorneoCheckout on Arbitrum",
+                description: `Agent ↔ store ↔ BorneoCheckout on ${config.chainLabel}`,
                 protocolLines: [],
               };
               setState((prev) => ({
@@ -1064,7 +1064,7 @@ export default function BuyerPage() {
                 status: failed ? "error" : "complete",
                 protocolLines,
                 links: explorer
-                  ? [{ label: "View on Arbiscan", href: explorer }]
+                  ? [{ label: "View on block explorer", href: explorer }]
                   : undefined,
               };
               setState((prev) => ({
@@ -1106,7 +1106,7 @@ export default function BuyerPage() {
               }
               if (explorer) {
                 links.push({
-                  label: `Arbitrum explorer · ${skuId}`,
+                  label: `Block explorer · ${skuId}`,
                   href: explorer,
                 });
               }

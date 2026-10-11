@@ -1,5 +1,6 @@
 "use client";
 
+import { config } from "@/lib/config";
 import { useCallback, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
@@ -46,7 +47,7 @@ export default function BuyerXPointsPage() {
         <p className="text-sm leading-relaxed text-foreground/60">
           Every USDC purchase earns XPoints from Borneo&apos;s protocol
           micro-fee. Invite friends — they get a boost, and the loop grows
-          switching incentives without leaving Arbitrum.
+          switching incentives without leaving {config.chainLabel}.
         </p>
       </header>
 

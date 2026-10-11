@@ -258,7 +258,7 @@ export function TransactionHistory({
                     rel="noreferrer"
                     className="font-mono text-primary underline-offset-2 hover:underline"
                   >
-                    Arbitrum explorer {shortHash(e.explorerUrl)}
+                    Block explorer {shortHash(e.explorerUrl)}
                   </a>
                 ) : null}
                 {e.rail === "straitsx-card" && e.cardOpaqueId ? (
