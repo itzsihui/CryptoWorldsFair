@@ -1,15 +1,18 @@
 import {
+  chainSettings,
   config,
-  eip712DomainFor,
   explorerTx,
+  settleAssetFor,
   toAtomic,
 } from "@/lib/config";
+import { resolveTokenDomain } from "@/lib/protocol/token-domain";
 import {
-  ArbitrumFacilitator,
+  EvmFacilitator,
   checkoutOrderKey,
   checkoutOrderNonce,
   decodePaymentSignatureHeader,
   encodePaymentRequiredHeader,
+  selectRequirement,
   type PaymentPayload,
   type PaymentRequired,
   type PaymentRequirements,
@@ -18,30 +21,33 @@ import type { Sku, StoreRecord } from "@/lib/store/types";
 
 export type { PaymentRequired, PaymentRequirements, PaymentPayload };
 
-export function buildPaymentRequired(
-  store: StoreRecord,
-  sku: Sku,
-  origin: string,
-  orderId: string,
-  quantity: number,
-): PaymentRequired {
-  const amount = (
-    BigInt(toAtomic(sku.price)) * BigInt(quantity)
-  ).toString();
-  const asset = (sku.settleAsset || config.tokenAddress).trim();
-  const symbol = (sku.settleSymbol || config.tokenSymbol).trim();
-  const checkout = config.checkoutAddress;
+/** One `exact` requirement for paying this order on `network`. */
+async function buildRequirement(args: {
+  network: string;
+  store: StoreRecord;
+  sku: Sku;
+  orderId: string;
+  amount: string;
+}): Promise<PaymentRequirements | null> {
+  const { network, store, sku, orderId, amount } = args;
+  const settle = settleAssetFor(network, sku);
+  if (!settle) return null;
+  const { asset, symbol } = settle;
+  const chain = chainSettings(network);
+  const checkout = chain.checkoutAddress;
   const orderKey = checkout ? checkoutOrderKey(orderId) : undefined;
-  const accept: PaymentRequirements = {
+  const domain = await resolveTokenDomain(network, asset, symbol);
+  return {
     scheme: "exact",
-    network: config.network,
+    network,
     amount,
     asset,
     payTo: checkout || store.merchantAddress,
     maxTimeoutSeconds: 300,
     extra: {
-      ...eip712DomainFor(asset, symbol),
+      ...domain,
       orderId,
+      chainLabel: chain.label,
       settleSymbol: symbol,
       quoteCurrency: sku.quoteCurrency || symbol,
       quotePrice: sku.quotePrice || sku.price,
@@ -52,7 +58,7 @@ export function buildPaymentRequired(
             merchant: store.merchantAddress,
             orderKey,
             nonce: checkoutOrderNonce({
-              chainId: config.chainId,
+              chainId: chain.chainId,
               checkout,
               orderKey,
               merchant: store.merchantAddress,
@@ -64,6 +70,27 @@ export function buildPaymentRequired(
         : {}),
     },
   };
+}
+
+/**
+ * The 402 challenge for an order: one `accepts` entry per settlement chain
+ * (CHAIN_NETWORK first, then SETTLE_NETWORKS). A buyer pays on exactly one.
+ */
+export async function buildPaymentRequired(
+  store: StoreRecord,
+  sku: Sku,
+  origin: string,
+  orderId: string,
+  quantity: number,
+): Promise<PaymentRequired> {
+  const amount = (
+    BigInt(toAtomic(sku.price)) * BigInt(quantity)
+  ).toString();
+  const built = await Promise.all(
+    config.settleNetworks.map((network) =>
+      buildRequirement({ network, store, sku, orderId, amount }),
+    ),
+  );
   return {
     x402Version: 2,
     resource: {
@@ -71,8 +98,22 @@ export function buildPaymentRequired(
       description: `${sku.title} x${quantity}`,
       mimeType: "application/json",
     },
-    accepts: [accept],
+    accepts: built.filter((a): a is PaymentRequirements => a !== null),
   };
+}
+
+/**
+ * The server's own requirement for the chain and asset a buyer signed for.
+ * Settlement always verifies against this, never against the buyer's copy.
+ */
+export function matchRequirement(
+  challenge: PaymentRequired,
+  payload: PaymentPayload,
+): PaymentRequirements | undefined {
+  return selectRequirement(challenge, {
+    network: payload.accepted.network,
+    asset: payload.accepted.asset,
+  });
 }
 
 /** Atomic amount for order records (micro-units). */
@@ -96,26 +137,30 @@ export function parsePaymentSignature(header: string): PaymentPayload | null {
   }
 }
 
-let facilitatorInstance: ArbitrumFacilitator | null = null;
+const facilitators = new Map<string, EvmFacilitator>();
 
-function facilitator(): ArbitrumFacilitator {
-  if (facilitatorInstance) return facilitatorInstance;
+/** One relayer per chain, created on first use. The same key serves all chains. */
+function facilitator(network: string): EvmFacilitator {
+  const existing = facilitators.get(network);
+  if (existing) return existing;
+  const chain = chainSettings(network);
   const key = config.facilitatorPrivateKey;
   if (!key) {
     throw new Error(
-      "Facilitator key missing. Set FACILITATOR_PRIVATE_KEY (or BUYER_PRIVATE_KEY) with Arbitrum ETH for gas.",
+      `Facilitator key missing. Set FACILITATOR_PRIVATE_KEY (or BUYER_PRIVATE_KEY) with ${chain.nativeSymbol} on ${chain.label} for gas.`,
     );
   }
-  facilitatorInstance = new ArbitrumFacilitator({
+  const created = new EvmFacilitator({
     relayerKey: key,
-    network: config.network,
-    rpcUrl: config.rpcUrl,
+    network,
+    rpcUrl: chain.rpcUrl,
   });
-  return facilitatorInstance;
+  facilitators.set(network, created);
+  return created;
 }
 
 /**
- * Verify + settle a signed EIP-3009 payment on Arbitrum.
+ * Verify + settle a signed EIP-3009 payment on the requirement's chain.
  */
 export async function verifyAndSettle(args: {
   paymentHeader: string;
@@ -129,15 +174,20 @@ export async function verifyAndSettle(args: {
       return { ok: false as const, reason: "Invalid PAYMENT-SIGNATURE" };
     }
 
-    const settled = await facilitator().settle(payload, args.paymentRequirements);
+    const network = args.paymentRequirements.network;
+    const settled = await facilitator(network).settle(
+      payload,
+      args.paymentRequirements,
+    );
     if (!settled.success) {
       return { ok: false as const, reason: settled.errorReason };
     }
 
     return {
       ok: true as const,
+      network,
       txHash: settled.transaction,
-      explorerUrl: explorerTx(settled.transaction),
+      explorerUrl: explorerTx(settled.transaction, network),
       payer: settled.payer,
       checkout: settled.checkout,
     };
