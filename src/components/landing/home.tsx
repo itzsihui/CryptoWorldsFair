@@ -1,5 +1,6 @@
 "use client";
 
+import { config, settleChainsLabel } from "@/lib/config";
 import Image from "next/image";
 import Link from "next/link";
 import {
@@ -27,7 +28,9 @@ const TURNS = [
   { who: "You", text: "Buy this limited drop — pay from my wallet." },
   {
     who: "Agent",
-    text: "Matched the drop. Checking USDC — will route ETH → USDC on Arbitrum if short.",
+    text: config.isArbitrum
+      ? "Matched the drop. Checking USDC — will route ETH → USDC on Arbitrum if short."
+      : `Matched the drop. Checking ${config.tokenSymbol} on ${config.chainLabel}.`,
   },
   { who: "You", text: "Authorize." },
   {
@@ -127,7 +130,7 @@ export function LandingHome() {
                   "landing-rise font-[family-name:var(--font-syne)] text-[clamp(2rem,5vw,3.5rem)] font-semibold leading-[1.12] tracking-tight text-[var(--landing-fog)] pb-1",
                 )}
               >
-                Intent to XPoints — settle on Arbitrum.
+                Intent to XPoints — settle on {settleChainsLabel()}.
               </h1>
               <p
                 className={cn(
@@ -174,8 +177,8 @@ export function LandingHome() {
                 Log in as buyer
               </h2>
               <p className="mt-2 max-w-[36ch] text-sm leading-relaxed text-[var(--landing-fog)]/60">
-                Intent in chat — routes liquidity when needed, settles USDC on
-                Arbitrum after you authorize, earns XPoints.
+                Intent in chat — routes liquidity when needed, settles {config.tokenSymbol} on{" "}
+                {settleChainsLabel()} after you authorize, earns XPoints.
               </p>
               <span className="mt-6 inline-flex text-sm font-medium text-[var(--landing-jade)] group-hover:underline">
                 Continue to Shop
@@ -351,7 +354,7 @@ export function LandingHome() {
                 USDC settle stays inside the chat.
               </h2>
               <p className="mt-3 max-w-[46ch] text-[var(--landing-fog)]/55">
-                HTTP 402 / x402 on Arbitrum — no redirect checkout tab. The agent
+                HTTP 402 / x402 on {settleChainsLabel()} — no redirect checkout tab. The agent
                 only settles after you authorize. Locked quote: payee, amount,
                 and SKU cannot be rewritten by catalog copy.
               </p>
@@ -375,7 +378,7 @@ export function LandingHome() {
                 className="rounded-md border border-white/10 bg-black/25 p-7 md:p-9"
               >
                 <p className="font-[family-name:var(--font-syne)] text-xl font-semibold text-[var(--landing-fog)]">
-                  USDC on Arbitrum
+                  {config.tokenSymbol} on {config.chainLabel}
                 </p>
                 <p className="mt-3 text-sm leading-relaxed text-[var(--landing-fog)]/55">
                   Stablecoin settle on testnet — exact amount, locked payTo,
@@ -457,7 +460,7 @@ export function LandingHome() {
                 <div>
                   <dt className="text-[var(--landing-fog)]/45">Rail</dt>
                   <dd className="mt-1 text-[var(--landing-fog)]">
-                    USDC · x402 on Arbitrum
+                    {config.tokenSymbol} · x402 on {config.chainLabel}
                   </dd>
                 </div>
               </dl>
@@ -506,7 +509,7 @@ export function LandingHome() {
                 <span className="font-[family-name:var(--font-syne)] text-[var(--landing-fog)]">
                   Settle.{" "}
                 </span>
-                USDC via HTTP 402 / x402 on Arbitrum. Waits on explicit authorize —
+                {config.tokenSymbol} via HTTP 402 / x402 on {settleChainsLabel()}. Waits on explicit authorize —
                 catalog copy cannot retarget pay.
               </p>
             </div>
