@@ -58,7 +58,7 @@ export default function DemoPage() {
           ...prev,
           {
             role: "pitch",
-            text: `Arbitrum: ${data.pitch?.arbitrum}`,
+            text: `Settlement: ${data.pitch?.arbitrum}`,
           },
           { role: "pitch", text: `Routing + settle: ${data.pitch?.routing}` },
           { role: "pitch", text: `VISA: ${data.pitch?.straitsx}` },
@@ -119,7 +119,7 @@ export default function DemoPage() {
 
         {explorerUrl ? (
           <p className="mt-4 text-sm">
-            Arbitrum explorer:{" "}
+            Block explorer:{" "}
             <a
               className="text-primary underline-offset-4 hover:underline"
               href={explorerUrl}
