@@ -7,6 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "test": "tsx --test scripts/chains.test.mts",
+    "chains:check": "tsx --env-file-if-exists=.env scripts/check-chains.mts",
     "protocol:build": "node services/protocol/build.mjs",
     "protocol:deploy": "bash scripts/deploy-protocol.sh"
   },
@@ -47,6 +49,7 @@
     "eslint": "^9",
     "eslint-config-next": "16.3.1",
     "tailwindcss": "^4",
+    "tsx": "^4.23.15",
     "typescript": "^5"
   }
 }
