@@ -19,7 +19,7 @@ Colosseum asks for the items below. Fill the bracketed parts before submitting.
 | Product demo video | Up to 3 minutes (shot list below) |
 | Go-to-market, demand validation, distribution | [fill in] |
 | Prior work disclosure | See "Prior work" below. Colosseum requires this in the form |
-| Onchain proof | BorneoCheckout [`0xf818…9fc4`](https://sepolia.arbiscan.io/address/0xf8188490C10d0248DBB27bD1A07F8a7b4f0e9fc4) · settled purchase [`0x6984…3545`](https://sepolia.arbiscan.io/tx/0x698479add48aa055711965108a33457357465d4e36897029f96300757fa23545) · Base Sepolia checkout [`0x3aD9…6d28`](https://sepolia.basescan.org/address/0x3aD9d36Fd382162E206415fF1736E78bF8326d28) · settled purchase [`0xe59a…f642`](https://sepolia.basescan.org/tx/0xe59a1358d09517132756e5a4be1ee623061d459611de348deae718bda6f8f642) · HyperEVM Testnet checkout `0x3aD9d36Fd382162E206415fF1736E78bF8326d28` (deploy tx `0x5bfd20c6…25c7`) |
+| Onchain proof | BorneoCheckout [`0xf818…9fc4`](https://sepolia.arbiscan.io/address/0xf8188490C10d0248DBB27bD1A07F8a7b4f0e9fc4) · settled purchase [`0x6984…3545`](https://sepolia.arbiscan.io/tx/0x698479add48aa055711965108a33457357465d4e36897029f96300757fa23545) · Base Sepolia checkout [`0x3aD9…6d28`](https://sepolia.basescan.org/address/0x3aD9d36Fd382162E206415fF1736E78bF8326d28) · settled purchase [`0xe59a…f642`](https://sepolia.basescan.org/tx/0xe59a1358d09517132756e5a4be1ee623061d459611de348deae718bda6f8f642) · HyperEVM Testnet checkout [`0x3aD9…6d28`](https://crypto-worlds-fair.vercel.app/explorer/998/address/0x3aD9d36Fd382162E206415fF1736E78bF8326d28) · settled purchase [`0x524b…38bb`](https://crypto-worlds-fair.vercel.app/explorer/998/tx/0x524be5fa8a4edcb79ff09a6ca1cab6ceda62dc4f9df71acd48e09e4a31da38bb) |
 
 ## Prior work
 
@@ -27,8 +27,7 @@ Colosseum's rule: teams may start before the hackathon, products are judged only
 
 What to disclose:
 
-- Borneo was built for the Arbitrum Open House Buildathon and submitted there. Source: [itzsihui/ArbitrumBuildathon](https://github.com/itzsihui/ArbitrumBuildathon), commits dated Oct 3–4, 2026.
-- This repository is a copy of that codebase, re-committed in small steps on Oct 11–12, 2026. The commit dates here are when the files were copied, not when they were first written.
+- This repository's code was re-committed in small steps on Oct 11–12, 2026. The commit dates here are when the files were copied, not when they were first written.
 - [List anything built before Sep 14, 2026, such as earlier versions on other chains.]
 
 Added in this repository:
@@ -57,9 +56,9 @@ Added in this repository:
 |---|---|
 | Arbitrum | Checkout live and verified on Arbitrum Sepolia. USDC + Paxos USDG. Uniswap V3 route quotes from Arbitrum One. ETH gas bridge via the Arbitrum SDK. |
 | Base | Checkout live on Base Sepolia with a settled USDC purchase. Base is where x402 clients already operate. |
-| Hyperliquid | Checkout live on HyperEVM Testnet, passing the on-chain preflight. Relayer pays gas in HYPE. |
+| Hyperliquid | Checkout live on HyperEVM Testnet with a settled USDC purchase. Relayer pays gas in HYPE. |
 
-The checkout is deployed on Base Sepolia and HyperEVM Testnet, and `npm run chains:check` passes on all three chains. A real USDC purchase has settled on Base Sepolia (link above). HyperEVM Testnet has no settled purchase yet; see [`chains.md`](./chains.md#verification-status).
+The checkout is deployed on Base Sepolia and HyperEVM Testnet, and `npm run chains:check` passes on all three chains. A real USDC purchase has settled on each of them (links above); see [`chains.md`](./chains.md#verification-status).
 
 ## Demo video shot list (~3 min)
 

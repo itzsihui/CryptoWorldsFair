@@ -9,7 +9,7 @@ pdf_options:
 
 **Two-sided agentic commerce:** merchants publish agent-ready catalogs; buyers discover and pay in one chat — with **Visa-scoped cards** and **USDC on Arbitrum, Base and HyperEVM**, secured by a **CaMeL-shaped** settle lock against prompt injection.
 
-| | |
+| Field | Details |
 |---|---|
 | **Team / Project** | Borneo |
 | **One-liner** | Agents that shop. Merchants that get paid. Catalog text that cannot steal the money. |

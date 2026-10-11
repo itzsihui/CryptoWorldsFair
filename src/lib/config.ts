@@ -25,6 +25,19 @@ function env(name: string, fallback: string) {
   return process.env[name] || fallback;
 }
 
+/**
+ * Receipts are read by agents outside the site, so an explorer base that is a
+ * path on this site needs an origin: SITE_URL, else Vercel's production domain.
+ * Stays relative when neither is set (local dev, client bundle).
+ */
+function absoluteExplorerBase(base: string) {
+  if (!base.startsWith("/")) return base;
+  const vercel = process.env.VERCEL_PROJECT_PRODUCTION_URL?.trim();
+  const origin =
+    process.env.SITE_URL?.trim() || (vercel ? `https://${vercel}` : "");
+  return `${origin.replace(/\/$/, "")}${base}`;
+}
+
 function resolveNetwork(): ChainNetwork {
   return (
     normalizeNetwork(
@@ -148,7 +161,7 @@ export const config = {
   get buyerSeed() {
     return this.buyerPrivateKey;
   },
-  explorerBase: env("EXPLORER_BASE", preset.explorerBase),
+  explorerBase: absoluteExplorerBase(env("EXPLORER_BASE", preset.explorerBase)),
   /** Optional legacy Card MCP URL — unused when empty; Visa rail uses local mandate. */
   straitsxMcpUrl: env("STRAITSX_MCP_URL", ""),
   get straitsxMcpToken() {
@@ -235,7 +248,9 @@ export function chainSettings(target: ChainNetwork = config.network): ChainSetti
     family: p.family,
     isTestnet: p.testnet,
     rpcUrl: env(`RPC_URL_${p.chainId}`, p.rpcUrl),
-    explorerBase: env(`EXPLORER_BASE_${p.chainId}`, p.explorerBase),
+    explorerBase: absoluteExplorerBase(
+      env(`EXPLORER_BASE_${p.chainId}`, p.explorerBase),
+    ),
     nativeSymbol: p.nativeSymbol,
     tokenAddress: p.token,
     tokenSymbol: p.tokenSymbol,

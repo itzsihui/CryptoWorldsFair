@@ -37,7 +37,11 @@ test("every preset is internally consistent", () => {
     assert.equal(chain.chainId, chain.viemChain.id);
     assert.equal(chain.testnet, Boolean(chain.viemChain.testnet), chain.label);
     assert.ok(chain.rpcUrl.startsWith("https://"), chain.label);
-    assert.ok(chain.explorerBase.startsWith("https://"), chain.label);
+    assert.ok(
+      chain.explorerBase.startsWith("https://") ||
+        chain.explorerBase === `/explorer/${chain.chainId}`,
+      chain.label,
+    );
     // getAddress throws on a bad checksum, so a typo in an address fails here.
     assert.equal(getAddress(chain.token), chain.token, `${chain.label} token checksum`);
     if (chain.usdg) assert.equal(getAddress(chain.usdg), chain.usdg, `${chain.label} USDG checksum`);

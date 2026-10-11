@@ -8,7 +8,7 @@ Borneo settles x402 payments on three ecosystems. One codebase, one `BorneoCheck
 | Arbitrum One | `eip155:42161` | 42161 | ETH | USDC `0xaf88d065e77c8cC2239327C5EDb3A432268e5831`, USDG `0x004B506865409877C9fA29bfb1ebA929984B9bbC` | arbiscan.io |
 | Base Sepolia | `eip155:84532` | 84532 | ETH | USDC `0x036CbD53842c5426634e7929541eC2318f3dCF7e` | sepolia.basescan.org |
 | Base | `eip155:8453` | 8453 | ETH | USDC `0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913` | basescan.org |
-| HyperEVM Testnet | `eip155:998` | 998 | HYPE | USDC `0x2B3370eE501B4a559b57D449569354196457D8Ab` | testnet.purrsec.com |
+| HyperEVM Testnet | `eip155:998` | 998 | HYPE | USDC `0x2B3370eE501B4a559b57D449569354196457D8Ab` | built-in viewer at `/explorer/998` |
 | HyperEVM | `eip155:999` | 999 | HYPE | USDC `0xb88339CB7199b77E23DB6E890353E22632Ba630f` | hyperevmscan.io |
 
 The registry lives in [`src/lib/chains.ts`](../src/lib/chains.ts); the contract-side allowlist mirrors it in [`contracts/script/SettleTokens.sol`](../contracts/script/SettleTokens.sol). USDC addresses are from [Circle's contract list](https://developers.circle.com/stablecoins/usdc-contract-addresses), USDG from [Paxos](https://docs.paxos.com/guides/stablecoin/usdg/mainnet).
@@ -110,8 +110,8 @@ npx tsx --env-file=.env scripts/e2e-checkout.mts http://localhost:3000 atelier-t
 | Arbitrum Sepolia | Checkout live and verified; real USDC and USDG purchases settled (links in the README) |
 | Multi-chain flow | Exercised end to end on local Anvil chains with the three testnet chain ids and a mock EIP-3009 token at each USDC address: one purchase per chain, buyer-agent chain selection, double-pay, unlisted-chain and cross-chain replay attempts |
 | Base Sepolia | Checkout [`0x3aD9…6d28`](https://sepolia.basescan.org/address/0x3aD9d36Fd382162E206415fF1736E78bF8326d28) deployed; `npm run chains:check` passes; real USDC purchase settled through the checkout: [`0xe59a…f642`](https://sepolia.basescan.org/tx/0xe59a1358d09517132756e5a4be1ee623061d459611de348deae718bda6f8f642) |
-| HyperEVM Testnet | Checkout `0x3aD9d36Fd382162E206415fF1736E78bF8326d28` deployed (tx `0x5bfd20c64b7cb8041ad96f1b48c3910a72148eaac6ae35f4d45dba44a57225c7`); `npm run chains:check` passes. No purchase settled yet |
-| HyperEVM Testnet explorer URL | `testnet.purrsec.com` returned 404 for these transactions and the Blockscout testnet explorer was millions of blocks behind (Oct 2026). Check transactions with `cast receipt <tx> --rpc-url https://rpc.hyperliquid-testnet.xyz/evm`, or set `EXPLORER_BASE_998` to an explorer that works |
+| HyperEVM Testnet | Checkout `0x3aD9d36Fd382162E206415fF1736E78bF8326d28` deployed (tx `0x5bfd20c64b7cb8041ad96f1b48c3910a72148eaac6ae35f4d45dba44a57225c7`); `npm run chains:check` passes; real USDC purchase settled through the checkout from the live site: [`0x524b…38bb`](https://crypto-worlds-fair.vercel.app/explorer/998/tx/0x524be5fa8a4edcb79ff09a6ca1cab6ceda62dc4f9df71acd48e09e4a31da38bb) |
+| HyperEVM Testnet explorer | No public explorer indexes this testnet (Oct 2026): `testnet.purrsec.com` returns 404, the Blockscout instance is millions of blocks behind, and HypurrScan's testnet EVM pages read mainnet. Borneo serves its own RPC-backed viewer at `/explorer/998/tx/<hash>` and `/explorer/998/address/<addr>`, and receipts link there. Set `SITE_URL` to make those links absolute outside Vercel, or `EXPLORER_BASE_998` to use another explorer |
 
 ## Not supported, and why
 

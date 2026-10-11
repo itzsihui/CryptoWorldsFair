@@ -47,8 +47,6 @@ flowchart LR
 
 One codebase and one contract serve all three. `CHAIN_NETWORK` picks the primary chain and `SETTLE_NETWORKS` adds more, so a single 402 can offer several chains and the buyer agent pays on the first one where its wallet holds enough. The Uniswap route quote and the ETH gas bridge are Arbitrum features and switch off elsewhere. Setup, deploy commands and what is and isn't verified: [`docs/chains.md`](./docs/chains.md).
 
-> **Project history.** Borneo was first built for the Arbitrum Open House Buildathon ([itzsihui/ArbitrumBuildathon](https://github.com/itzsihui/ArbitrumBuildathon), commits from Oct 3 2026). This repository continues that codebase for Crypto World's Fair. Multi-chain settlement (Base, HyperEVM, per-chain 402 entries, on-chain EIP-712 domain checks) is the work added here.
-
 | Step | Surface |
 |---|---|
 | Intent | `/buyer` salesperson + `GET /api/search` |
@@ -74,7 +72,7 @@ An order settles once, on one chain. The server verifies against its own require
 
 [`contracts/src/BorneoCheckout.sol`](./contracts/src/BorneoCheckout.sol) is a non-custodial x402 settlement contract for agent payments (Foundry, OpenZeppelin v5, Solidity 0.8.24).
 
-| | |
+| Item | Details |
 |---|---|
 | Arbitrum Sepolia | [`0xf8188490C10d0248DBB27bD1A07F8a7b4f0e9fc4`](https://sepolia.arbiscan.io/address/0xf8188490C10d0248DBB27bD1A07F8a7b4f0e9fc4) · [verified on Arbiscan](https://sepolia.arbiscan.io/address/0xf8188490C10d0248DBB27bD1A07F8a7b4f0e9fc4#code) · [Blockscout](https://arbitrum-sepolia.blockscout.com/address/0xf8188490C10d0248DBB27bD1A07F8a7b4f0e9fc4?tab=contract) |
 | Deploy tx | [`0xe1a2dec5…370f`](https://sepolia.arbiscan.io/tx/0xe1a2dec59a5af884e4eac74959f1795369472408fc80016f2d15f7ff41dd370f) |
@@ -83,7 +81,8 @@ An order settles once, on one chain. The server verifies against its own require
 | Allowlisted assets | Circle USDC, **Paxos USDG** |
 | Base Sepolia | [`0x3aD9d36Fd382162E206415fF1736E78bF8326d28`](https://sepolia.basescan.org/address/0x3aD9d36Fd382162E206415fF1736E78bF8326d28) · deploy tx [`0x7b569afe…be76`](https://sepolia.basescan.org/tx/0x7b569afe3bf944e4dcd81b5d122e9323fdc4ec9c7f986b62d977b6942e4abe76) |
 | Settled purchase (Base Sepolia, USDC via checkout) | [`0xe59a1358…f642`](https://sepolia.basescan.org/tx/0xe59a1358d09517132756e5a4be1ee623061d459611de348deae718bda6f8f642) — 0.02 USDC → 0.0199 merchant + 0.0001 treasury |
-| HyperEVM Testnet | `0x3aD9d36Fd382162E206415fF1736E78bF8326d28` · deploy tx `0x5bfd20c64b7cb8041ad96f1b48c3910a72148eaac6ae35f4d45dba44a57225c7` (check with `cast receipt <tx> --rpc-url https://rpc.hyperliquid-testnet.xyz/evm`) |
+| HyperEVM Testnet | [`0x3aD9d36Fd382162E206415fF1736E78bF8326d28`](https://crypto-worlds-fair.vercel.app/explorer/998/address/0x3aD9d36Fd382162E206415fF1736E78bF8326d28) · deploy tx [`0x5bfd20c6…25c7`](https://crypto-worlds-fair.vercel.app/explorer/998/tx/0x5bfd20c64b7cb8041ad96f1b48c3910a72148eaac6ae35f4d45dba44a57225c7) (no public explorer indexes this testnet, so links go to Borneo's RPC-backed viewer) |
+| Settled purchase (HyperEVM Testnet, USDC via checkout, live site) | [`0x524be5fa…38bb`](https://crypto-worlds-fair.vercel.app/explorer/998/tx/0x524be5fa8a4edcb79ff09a6ca1cab6ceda62dc4f9df71acd48e09e4a31da38bb) — 0.02 USDC → 0.0199 merchant + 0.0001 treasury |
 
 **Why a contract instead of a plain transfer?** With `TransferWithAuthorization`, whoever holds the signature can submit it, and nothing on-chain ties the payment to an order. BorneoCheckout fixes that:
 
@@ -164,7 +163,7 @@ npm run dev
 | Paxos USDG (Arbitrum One) | [`0x004B506865409877C9fA29bfb1ebA929984B9bbC`](https://arbiscan.io/token/0x004B506865409877C9fA29bfb1ebA929984B9bbC) |
 | BorneoCheckout (Arbitrum Sepolia) | [`0xf8188490C10d0248DBB27bD1A07F8a7b4f0e9fc4`](https://sepolia.arbiscan.io/address/0xf8188490C10d0248DBB27bD1A07F8a7b4f0e9fc4) |
 | BorneoCheckout (Base Sepolia) | [`0x3aD9d36Fd382162E206415fF1736E78bF8326d28`](https://sepolia.basescan.org/address/0x3aD9d36Fd382162E206415fF1736E78bF8326d28) |
-| BorneoCheckout (HyperEVM Testnet) | `0x3aD9d36Fd382162E206415fF1736E78bF8326d28` |
+| BorneoCheckout (HyperEVM Testnet) | [`0x3aD9d36Fd382162E206415fF1736E78bF8326d28`](https://crypto-worlds-fair.vercel.app/explorer/998/address/0x3aD9d36Fd382162E206415fF1736E78bF8326d28) |
 | Explorer | `https://sepolia.arbiscan.io` |
 
 ### Scripts
@@ -187,9 +186,8 @@ npm run dev
 - [x] Smart contract deployed on Arbitrum Sepolia, tested (unit + fuzz + fork) and verified
 - [x] Arbiscan links for settled purchases (see Smart contract section)
 - [x] BorneoCheckout deployed on Base Sepolia and HyperEVM Testnet; `npm run chains:check` passes on all three chains
-- [x] Settled purchase on Base Sepolia
-- [ ] Settled purchase on HyperEVM Testnet (needs testnet USDC in the buyer wallet)
-- [ ] Prior work disclosed in the submission form (see Project history above)
+- [x] Settled purchase on Base Sepolia and on HyperEVM Testnet
+- [ ] Prior work disclosed in the submission form
 - [ ] Submit before Oct 12, 2026 11:59pm PT
 
 See [`docs/submission.md`](./docs/submission.md) for the track mapping and shot list.

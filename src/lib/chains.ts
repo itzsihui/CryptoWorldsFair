@@ -29,6 +29,7 @@ export type ChainPreset = {
   label: string;
   testnet: boolean;
   rpcUrl: string;
+  /** Absolute URL, or a path on this site (resolved against SITE_URL). */
   explorerBase: string;
   /** Gas token the relayer pays in. Buyers never need it. */
   nativeSymbol: string;
@@ -117,8 +118,9 @@ const PRESETS: ChainPreset[] = [
   preset(hyperliquidEvmTestnet, "hyperliquid", {
     label: "HyperEVM Testnet",
     rpcUrl: "https://rpc.hyperliquid-testnet.xyz/evm",
-    // viem ships no explorer for this testnet; override with EXPLORER_BASE_998.
-    explorerBase: "https://testnet.purrsec.com",
+    // No public explorer indexes this testnet, so links go to Borneo's own
+    // RPC-backed viewer (src/app/explorer). Override with EXPLORER_BASE_998.
+    explorerBase: "/explorer/998",
     ...usdc("0x2B3370eE501B4a559b57D449569354196457D8Ab", "USDC"),
     usdg: "",
   }),
