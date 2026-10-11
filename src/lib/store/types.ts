@@ -100,6 +100,10 @@ export type Order = {
   rail: "x402" | "straitsx-card";
   txHash?: string;
   explorerUrl?: string;
+  /** CAIP-2 chain the x402 payment settled on. Unset on older orders. */
+  network?: string;
+  /** Symbol of the token the order settled in on that chain. */
+  settleSymbol?: string;
   mandate?: CardMandate;
   /** Firebase buyer uid when known at settle. */
   buyerUid?: string;
