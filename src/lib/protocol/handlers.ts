@@ -1,4 +1,10 @@
-import { config, explorerTx, fromAtomic, toAtomic } from "@/lib/config";
+import {
+  chainLabelFor,
+  config,
+  explorerTx,
+  fromAtomic,
+  toAtomic,
+} from "@/lib/config";
 import { computeFeeAtomic, pointsFromFeeAtomic } from "@/lib/ownership-math";
 import { renderAgentCard } from "@/lib/protocol/agent-card";
 import { renderCatalog } from "@/lib/protocol/catalog";
@@ -7,6 +13,7 @@ import { originFromRequest, renderLlmsTxt } from "@/lib/protocol/llms-txt";
 import { renderReviews } from "@/lib/protocol/reviews";
 import {
   buildPaymentRequired,
+  matchRequirement,
   parsePaymentSignature,
   paymentAmountAtomic,
   paymentRequiredHeaders,
@@ -15,6 +22,13 @@ import {
 import { assertMandateAllows } from "@/lib/straitsx/mcp";
 import { repo } from "@/lib/store/repo";
 import type { CardMandate, Order, StoreRecord } from "@/lib/store/types";
+
+/**
+ * Orders with a settlement transaction in flight. A multi-chain 402 can be
+ * paid on any listed chain, so this stops one order being relayed twice at
+ * once. Per process: a shared store lock is needed across several instances.
+ */
+const settling = new Set<string>();
 
 function json(data: unknown, status = 200, headers?: HeadersInit) {
   return new Response(JSON.stringify(data, null, 2), {
@@ -102,7 +116,7 @@ export async function handleBuy(slug: string, request: Request) {
   const quantity = Math.max(1, Number(body.quantity) || 1);
   const orderId = body.orderId || crypto.randomUUID();
   const origin = originFromRequest(request);
-  const requirements = buildPaymentRequired(
+  const requirements = await buildPaymentRequired(
     store,
     sku,
     origin,
@@ -110,6 +124,17 @@ export async function handleBuy(slug: string, request: Request) {
     quantity,
   );
   const amountAtomic = paymentAmountAtomic(store, sku, quantity);
+  const offer = requirements.accepts[0];
+  if (!offer) {
+    return json(
+      { error: `SKU ${sku.id} has no settle asset on ${config.chainLabel}` },
+      500,
+    );
+  }
+  const offerSymbol = String(offer.extra?.settleSymbol || config.tokenSymbol);
+  const offerChains = requirements.accepts
+    .map((a) => chainLabelFor(a.network))
+    .join(", ");
 
   const existing = await repo.getOrder(orderId);
   if (existing?.status === "paid") {
@@ -148,9 +173,9 @@ export async function handleBuy(slug: string, request: Request) {
       store: slug,
       orderId,
       rail: "x402",
-      message: config.checkoutAddress
-        ? `HTTP 402 ${fromAtomic(amountAtomic)} ${sku.settleSymbol || config.tokenSymbol} → BorneoCheckout ${config.checkoutAddress} (merchant ${store.merchantAddress})`
-        : `HTTP 402 ${fromAtomic(amountAtomic)} ${sku.settleSymbol || config.tokenSymbol} to ${store.merchantAddress}`,
+      message: offer.extra?.checkout
+        ? `HTTP 402 ${fromAtomic(amountAtomic)} ${offerSymbol} → BorneoCheckout ${offer.extra.checkout} (merchant ${store.merchantAddress}) · ${offerChains}`
+        : `HTTP 402 ${fromAtomic(amountAtomic)} ${offerSymbol} to ${store.merchantAddress} · ${offerChains}`,
     });
     return new Response(JSON.stringify(requirements, null, 2), {
       status: 402,
@@ -176,12 +201,9 @@ export async function handleBuy(slug: string, request: Request) {
     });
   }
 
-  const verified = await verifyAndSettle({
-    paymentHeader: signature.trim(),
-    paymentRequirements: requirements.accepts[0],
-  });
-  if (!verified.ok) {
-    requirements.error = verified.reason;
+  const requirement = matchRequirement(requirements, payload);
+  if (!requirement) {
+    requirements.error = `unsupported_network: ${payload.accepted.network} is not accepted for this order (${offerChains})`;
     emit({
       status: 402,
       method: "POST",
@@ -189,7 +211,7 @@ export async function handleBuy(slug: string, request: Request) {
       store: slug,
       orderId,
       rail: "x402",
-      message: `402 verify failed: ${verified.reason}`,
+      message: `402 ${requirements.error}`,
     });
     return new Response(JSON.stringify(requirements, null, 2), {
       status: 402,
@@ -197,52 +219,89 @@ export async function handleBuy(slug: string, request: Request) {
     });
   }
 
-  const txHash = verified.txHash;
-  const onchain = verified.checkout;
-  const feeAtomic =
-    onchain?.feeAtomic ?? computeFeeAtomic(amountAtomic, config.protocolFeeBps);
-  const ownershipPoints = pointsFromFeeAtomic(feeAtomic);
-  const paid: Order = {
-    id: orderId,
-    slug,
-    skuId: sku.id,
-    quantity,
-    amountAtomic,
-    status: "paid",
-    rail: "x402",
-    txHash,
-    explorerUrl: verified.explorerUrl,
-    buyerUid:
-      body.buyerUid?.trim() || existing?.buyerUid || undefined,
-    createdAt: existing?.createdAt ?? new Date().toISOString(),
-    paidAt: new Date().toISOString(),
-    grossAtomic: amountAtomic,
-    feeAtomic,
-    netToMerchantAtomic: onchain?.netAtomic ?? amountAtomic,
-    protocolFeeBps: config.protocolFeeBps,
-    referrerId: body.referrerId?.trim() || undefined,
-    swapTxHash: body.swapTxHash?.trim() || undefined,
-    ownershipPoints,
-  };
-  await repo.putOrder(paid);
-  const skuRef = store.skus.find((item) => item.id === sku.id);
-  if (skuRef) {
-    skuRef.quantity = Math.max(0, skuRef.quantity - quantity);
-    await repo.putStore(store);
+  if (settling.has(orderId)) {
+    return json({ error: "settlement already in progress", orderId }, 409);
   }
+  // Hold the order until its paid record is stored, so a second signature
+  // for another chain can never start a second transfer for the same order.
+  settling.add(orderId);
+  try {
+    const latest = await repo.getOrder(orderId);
+    if (latest?.status === "paid") return json(receipt(latest, store));
 
-  emit({
-    status: 200,
-    method: "POST",
-    path: `/s/${slug}/buy`,
-    store: slug,
-    orderId,
-    rail: "x402",
-    message: onchain
-      ? `HTTP 200 BorneoCheckout.settle ${txHash} · merchant ${fromAtomic(onchain.netAtomic)} + fee ${onchain.feeAtomic} atomic`
-      : `HTTP 200 receipt ${txHash}`,
-  });
-  return json(receipt(paid, store));
+    const verified = await verifyAndSettle({
+      paymentHeader: signature.trim(),
+      paymentRequirements: requirement,
+      paymentPayload: payload,
+    });
+    if (!verified.ok) {
+      requirements.error = verified.reason;
+      emit({
+        status: 402,
+        method: "POST",
+        path: `/s/${slug}/buy`,
+        store: slug,
+        orderId,
+        rail: "x402",
+        message: `402 verify failed: ${verified.reason}`,
+      });
+      return new Response(JSON.stringify(requirements, null, 2), {
+        status: 402,
+        headers: paymentRequiredHeaders(requirements),
+      });
+    }
+
+    const txHash = verified.txHash;
+    const onchain = verified.checkout;
+    const feeAtomic =
+      onchain?.feeAtomic ?? computeFeeAtomic(amountAtomic, config.protocolFeeBps);
+    const ownershipPoints = pointsFromFeeAtomic(feeAtomic);
+    const paid: Order = {
+      id: orderId,
+      slug,
+      skuId: sku.id,
+      quantity,
+      amountAtomic,
+      status: "paid",
+      rail: "x402",
+      txHash,
+      explorerUrl: verified.explorerUrl,
+      network: verified.network,
+      settleSymbol: String(requirement.extra?.settleSymbol || config.tokenSymbol),
+      buyerUid:
+        body.buyerUid?.trim() || existing?.buyerUid || undefined,
+      createdAt: existing?.createdAt ?? new Date().toISOString(),
+      paidAt: new Date().toISOString(),
+      grossAtomic: amountAtomic,
+      feeAtomic,
+      netToMerchantAtomic: onchain?.netAtomic ?? amountAtomic,
+      protocolFeeBps: config.protocolFeeBps,
+      referrerId: body.referrerId?.trim() || undefined,
+      swapTxHash: body.swapTxHash?.trim() || undefined,
+      ownershipPoints,
+    };
+    await repo.putOrder(paid);
+    const skuRef = store.skus.find((item) => item.id === sku.id);
+    if (skuRef) {
+      skuRef.quantity = Math.max(0, skuRef.quantity - quantity);
+      await repo.putStore(store);
+    }
+
+    emit({
+      status: 200,
+      method: "POST",
+      path: `/s/${slug}/buy`,
+      store: slug,
+      orderId,
+      rail: "x402",
+      message: onchain
+        ? `HTTP 200 BorneoCheckout.settle on ${chainLabelFor(verified.network)} ${txHash} · merchant ${fromAtomic(onchain.netAtomic)} + fee ${onchain.feeAtomic} atomic`
+        : `HTTP 200 receipt on ${chainLabelFor(verified.network)} ${txHash}`,
+    });
+    return json(receipt(paid, store));
+  } finally {
+    settling.delete(orderId);
+  }
 }
 
 export async function handleCheckout(slug: string, request: Request) {
@@ -355,13 +414,19 @@ function receipt(order: Order, store?: StoreRecord | null) {
     skuId: order.skuId,
     quantity: order.quantity,
     amount: `${fromAtomic(order.amountAtomic)} ${
-      store?.skus.find((s) => s.id === order.skuId)?.settleSymbol || config.tokenSymbol
+      order.settleSymbol ||
+      store?.skus.find((s) => s.id === order.skuId)?.settleSymbol ||
+      config.tokenSymbol
     }`,
     rail: order.rail,
     status: order.status,
+    network: order.rail === "x402" ? order.network || config.network : undefined,
+    chain:
+      order.rail === "x402" ? chainLabelFor(order.network) : undefined,
     txHash: order.txHash,
     explorerUrl:
-      order.explorerUrl ?? (order.txHash ? explorerTx(order.txHash) : undefined),
+      order.explorerUrl ??
+      (order.txHash ? explorerTx(order.txHash, order.network) : undefined),
     mandate: order.mandate,
     paidAt: order.paidAt,
     grossAtomic: order.grossAtomic || order.amountAtomic,
