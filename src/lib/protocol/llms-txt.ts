@@ -1,4 +1,5 @@
 import { config } from "@/lib/config";
+import { settlementNetworks } from "@/lib/protocol/agent-card";
 import type { StoreRecord } from "@/lib/store/types";
 
 export function originFromRequest(request: Request) {
@@ -8,12 +9,17 @@ export function originFromRequest(request: Request) {
 
 export function renderLlmsTxt(store: StoreRecord, origin: string) {
   const base = `${origin}/s/${store.slug}`;
+  const networks = settlementNetworks();
+  const chainNames = networks.map((n) => n.name).join(", ");
+  const networkLines = networks
+    .map((n) => `- ${n.name} (${n.network}): ${n.symbol} ${n.asset}`)
+    .join("\n");
   return `# ${store.name}
 
 > AI-native storefront on the Agentic Storefront Protocol (Borneo).
 > Humans use a GUI. Agents use this file.
 
-This store sells in ${config.tokenSymbol} on Arbitrum (${config.network}).
+This store sells in dollar stablecoins on ${chainNames}.
 Do not scrape HTML. Do not open a checkout page.
 
 ## For agents
@@ -32,7 +38,7 @@ Do not scrape HTML. Do not open a checkout page.
 ## Checkout rails
 - Rail A x402: POST ${base}/buy
   - Expect HTTP 402 Payment Required with PAYMENT-REQUIRED.
-  - Pay exact amount in ${config.tokenSymbol} on Arbitrum Sepolia to the merchant EVM address, then retry with PAYMENT-SIGNATURE (presigned Payment blob).
+  - The 402 lists one \`accepts\` entry per chain. Pick one, sign its exact amount as an EIP-3009 authorization to its \`payTo\`, then retry with PAYMENT-SIGNATURE (presigned Payment blob).
 - Rail B Visa (agent-authorized card): POST ${base}/checkout
   - Issue a one-time scoped virtual card (spend cap, merchant whitelist, expiry).
   - Burn the card after success.
@@ -46,5 +52,8 @@ Do not scrape HTML. Do not open a checkout page.
 - Asset: ${config.tokenAddress}
 - Network: ${config.network}
 - Merchant payTo: ${store.merchantAddress}
+
+## Settlement networks
+${networkLines}
 `;
 }
