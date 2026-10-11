@@ -1,7 +1,7 @@
 import { runBuyerAgent } from "@/lib/agents/buyer";
 import { runCardAgent } from "@/lib/agents/card";
 import { runMerchantAgent } from "@/lib/agents/merchant";
-import { config } from "@/lib/config";
+import { config, settleChainsLabel } from "@/lib/config";
 
 export const runtime = "nodejs";
 
@@ -28,7 +28,7 @@ export async function POST(request: Request) {
 
   log.push({
     phase: "pitch",
-    text: "Intent → route → settle → earn on Arbitrum",
+    text: `Intent → route → settle → earn on ${settleChainsLabel()}`,
   });
   log.push({ phase: "merchant", text: merchantMessage });
   const merchant = await runMerchantAgent({ message: merchantMessage });
@@ -94,10 +94,10 @@ export async function POST(request: Request) {
     ok: true,
     pitch: {
       arbitrum:
-        "Intent → liquidity route → HTTP 402 → USDC on Arbitrum → XPoints",
+        `Intent → liquidity route → HTTP 402 → ${config.tokenSymbol} on ${settleChainsLabel()} → XPoints`,
       straitsx: "Scoped virtual card mandate → checkout → burn",
       aws: "Bedrock agents + API Gateway/Lambda/DynamoDB protocol slice",
-      routing: "Uniswap V3 quote on Arbitrum One + in-process x402 facilitator settling USDC on Arbitrum",
+      routing: `Uniswap V3 quote on Arbitrum One + in-process x402 facilitator settling ${config.tokenSymbol} on ${settleChainsLabel()}`,
     },
     merchant,
     x402,

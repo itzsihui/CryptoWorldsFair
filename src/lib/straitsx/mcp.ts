@@ -109,7 +109,7 @@ export async function issueScopedCard(args: {
     ...mandate,
     source: "local-mandate",
     note:
-      "Visa rail uses a local scoped-card mandate (no StraitsX MCP). Stablecoin settlement is USDC on Arbitrum Sepolia via x402.",
+      "Visa rail uses a local scoped-card mandate (no StraitsX MCP). Stablecoin settlement runs over x402 on the configured chain.",
   };
 }
 
