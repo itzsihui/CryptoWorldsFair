@@ -1,5 +1,27 @@
-import { config } from "@/lib/config";
+import { chainSettings, config, settleAssetFor } from "@/lib/config";
 import type { StoreRecord } from "@/lib/store/types";
+
+/** Chains and tokens a store accepts for x402, primary chain first. */
+export function settlementNetworks() {
+  return config.settleNetworks.flatMap((network) => {
+    const chain = chainSettings(network);
+    const settle = settleAssetFor(network, {});
+    if (!settle) return [];
+    return [
+      {
+        network,
+        chainId: chain.chainId,
+        name: chain.label,
+        testnet: chain.isTestnet,
+        asset: settle.asset,
+        symbol: settle.symbol,
+        decimals: config.tokenDecimals,
+        payTo: chain.checkoutAddress || undefined,
+        explorer: chain.explorerBase,
+      },
+    ];
+  });
+}
 
 /** AI-readable store business card for agent discovery. */
 export function renderAgentCard(store: StoreRecord, origin: string) {
@@ -18,6 +40,8 @@ export function renderAgentCard(store: StoreRecord, origin: string) {
       asset: config.tokenAddress,
       network: config.network,
     },
+    /** Every chain this store settles on. `currency` above is the first one. */
+    networks: settlementNetworks(),
     payTo: store.merchantAddress,
     endpoints: {
       llmsTxt: `${base}/llms.txt`,
