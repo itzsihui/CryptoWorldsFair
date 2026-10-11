@@ -49,6 +49,15 @@ const PARENT_PRESETS: Record<number, ParentPreset> = {
   },
 };
 
+/** The canonical ETH bridge only exists when the settlement chain is Arbitrum. */
+export function assertBridgeAvailable() {
+  if (!config.isArbitrum) {
+    throw new Error(
+      `The ETH gas bridge is Arbitrum-only. ${config.chainLabel} is the active chain, so fund ${config.nativeSymbol} there directly.`,
+    );
+  }
+}
+
 function parentPreset(): ParentPreset {
   return PARENT_PRESETS[config.chainId] ?? PARENT_PRESETS[421614];
 }
@@ -97,6 +106,7 @@ function childTxUrl(hash: string) {
 
 /** Server wallets that need Arbitrum ETH, merged when buyer and relayer share a key. */
 export async function getBridgeWallets(): Promise<BridgeWallet[]> {
+  assertBridgeAvailable();
   const byAddress = new Map<string, BridgeRole[]>();
   for (const role of ["buyer", "facilitator"] as const) {
     const key = keyForRole(role);
@@ -131,6 +141,7 @@ export async function depositEth(input: {
   role: BridgeRole;
   amountEth: string;
 }): Promise<{ parentTxHash: string; parentTxUrl: string; from: string }> {
+  assertBridgeAvailable();
   const key = keyForRole(input.role);
   if (!key) {
     throw new Error(
