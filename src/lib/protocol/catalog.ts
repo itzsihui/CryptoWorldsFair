@@ -12,6 +12,7 @@ export function renderCatalog(store: StoreRecord, origin: string) {
     },
     currency: config.tokenSymbol,
     network: config.network,
+    networks: config.settleNetworks,
     rails: ["x402", "straitsx-virtual-card"],
     updatedAt: store.updatedAt || store.createdAt,
     products: store.skus.map((sku) => ({
