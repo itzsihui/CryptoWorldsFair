@@ -1,5 +1,6 @@
 "use client";
 
+import { config, settleChainsLabel } from "@/lib/config";
 import { Reveal } from "@/components/landing/reveal";
 
 const IMPACT = [
@@ -10,8 +11,8 @@ const IMPACT = [
   },
   {
     value: "1",
-    label: "Settlement asset on Arbitrum",
-    detail: "USDC via x402",
+    label: `Settlement asset on ${config.chainLabel}`,
+    detail: `${config.tokenSymbol} via x402`,
   },
   {
     value: "+",
@@ -52,11 +53,11 @@ export function LandingProblemImpact() {
             <span className="text-[var(--landing-fog)]/35">→</span> Earn
           </p>
           <p className="mt-5 max-w-[40ch] font-[family-name:var(--font-syne)] text-xl font-medium leading-snug text-[var(--landing-fog)] md:text-2xl">
-            One agent loop on Arbitrum
+            One agent loop on {settleChainsLabel()}
           </p>
           <p className="mt-3 max-w-[48ch] text-sm leading-relaxed text-[var(--landing-fog)]/50">
             Borneo evaluates the wallet, routes liquidity into USDC, settles
-            with x402 on Arbitrum, and rewards you with XPoints from the protocol fee —
+            with x402 on {config.chainLabel}, and rewards you with XPoints from the protocol fee —
             so switching is seamless and rewarded.
           </p>
         </Reveal>
