@@ -1,5 +1,7 @@
 # Arbitrum Sepolia + USDC setup (Borneo)
 
+> Borneo also settles on Base and HyperEVM. This page is the Arbitrum walkthrough; [`docs/chains.md`](../docs/chains.md) covers every chain and how to accept several at once.
+
 Borneo settles the crypto rail with **Circle USDC on Arbitrum** via x402. Buyers sign an EIP-3009 `transferWithAuthorization`; Borneo's in-process facilitator verifies it and relays it onchain, so the merchant receives USDC directly from the buyer.
 
 ## Network
