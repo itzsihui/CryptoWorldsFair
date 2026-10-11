@@ -310,4 +310,40 @@ contract BorneoCheckoutTest is Test {
         assertEq(fee, (amount * feeBps) / 10_000);
         assertEq(usdc.balanceOf(address(checkout)), 0);
     }
+
+    // ------------------------------------------------------------------
+    // Multi-chain: one checkout per chain, orders cannot cross between them
+    // ------------------------------------------------------------------
+
+    function test_orderNonce_commitsToChainId() public {
+        bytes32 here = checkout.orderNonce(ORDER_ID, merchant, address(usdc), AMOUNT);
+        vm.chainId(8_453);
+        bytes32 onBase = checkout.orderNonce(ORDER_ID, merchant, address(usdc), AMOUNT);
+        vm.chainId(999);
+        bytes32 onHyperEvm = checkout.orderNonce(ORDER_ID, merchant, address(usdc), AMOUNT);
+        assertTrue(here != onBase);
+        assertTrue(here != onHyperEvm);
+        assertTrue(onBase != onHyperEvm);
+    }
+
+    function test_revert_authorizationSignedForAnotherChain() public {
+        // Signed for this chain's order, then presented on a checkout at the
+        // same address on another chain: the order nonce no longer matches.
+        Auth memory a = _signOrder(usdc, ORDER_ID, merchant, AMOUNT);
+        vm.chainId(8_453);
+        bytes32 expected = checkout.orderNonce(ORDER_ID, merchant, address(usdc), AMOUNT);
+        vm.expectRevert(abi.encodeWithSelector(BorneoCheckout.NonceMismatch.selector, expected, a.nonce));
+        vm.prank(relayer);
+        _settle(usdc, ORDER_ID, merchant, AMOUNT, a);
+    }
+
+    function test_orderNonce_commitsToCheckoutAddress() public {
+        address[] memory tokens = new address[](1);
+        tokens[0] = address(usdc);
+        BorneoCheckout other = new BorneoCheckout(owner, treasury, FEE_BPS, tokens);
+        assertTrue(
+            checkout.orderNonce(ORDER_ID, merchant, address(usdc), AMOUNT)
+                != other.orderNonce(ORDER_ID, merchant, address(usdc), AMOUNT)
+        );
+    }
 }
