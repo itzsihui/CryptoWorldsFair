@@ -109,8 +109,9 @@ npx tsx --env-file=.env scripts/e2e-checkout.mts http://localhost:3000 atelier-t
 |---|---|
 | Arbitrum Sepolia | Checkout live and verified; real USDC and USDG purchases settled (links in the README) |
 | Multi-chain flow | Exercised end to end on local Anvil chains with the three testnet chain ids and a mock EIP-3009 token at each USDC address: one purchase per chain, buyer-agent chain selection, double-pay, unlisted-chain and cross-chain replay attempts |
-| Base Sepolia, HyperEVM Testnet | Not yet deployed or settled on the public testnets. Deploy the checkout, fund the wallets, then run `npm run chains:check` |
-| HyperEVM Testnet explorer URL | Taken from memory, not confirmed. Set `EXPLORER_BASE_998` if links do not open |
+| Base Sepolia | Checkout [`0x3aD9…6d28`](https://sepolia.basescan.org/address/0x3aD9d36Fd382162E206415fF1736E78bF8326d28) deployed; `npm run chains:check` passes; real USDC purchase settled through the checkout: [`0xe59a…f642`](https://sepolia.basescan.org/tx/0xe59a1358d09517132756e5a4be1ee623061d459611de348deae718bda6f8f642) |
+| HyperEVM Testnet | Checkout `0x3aD9d36Fd382162E206415fF1736E78bF8326d28` deployed (tx `0x5bfd20c64b7cb8041ad96f1b48c3910a72148eaac6ae35f4d45dba44a57225c7`); `npm run chains:check` passes. No purchase settled yet |
+| HyperEVM Testnet explorer URL | `testnet.purrsec.com` returned 404 for these transactions and the Blockscout testnet explorer was millions of blocks behind (Oct 2026). Check transactions with `cast receipt <tx> --rpc-url https://rpc.hyperliquid-testnet.xyz/evm`, or set `EXPLORER_BASE_998` to an explorer that works |
 
 ## Not supported, and why
 

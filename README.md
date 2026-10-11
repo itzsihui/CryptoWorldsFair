@@ -42,8 +42,8 @@ flowchart LR
 | Chain | Testnet | Mainnet | Settle token | BorneoCheckout |
 |---|---|---|---|---|
 | Arbitrum | `eip155:421614` | `eip155:42161` | USDC, Paxos USDG | Live on Arbitrum Sepolia |
-| Base | `eip155:84532` | `eip155:8453` | USDC | Deploy with the same script |
-| HyperEVM | `eip155:998` | `eip155:999` | USDC | Deploy with the same script |
+| Base | `eip155:84532` | `eip155:8453` | USDC | Live on Base Sepolia |
+| HyperEVM | `eip155:998` | `eip155:999` | USDC | Live on HyperEVM Testnet |
 
 One codebase and one contract serve all three. `CHAIN_NETWORK` picks the primary chain and `SETTLE_NETWORKS` adds more, so a single 402 can offer several chains and the buyer agent pays on the first one where its wallet holds enough. The Uniswap route quote and the ETH gas bridge are Arbitrum features and switch off elsewhere. Setup, deploy commands and what is and isn't verified: [`docs/chains.md`](./docs/chains.md).
 
@@ -81,6 +81,9 @@ An order settles once, on one chain. The server verifies against its own require
 | Settled purchase (USDC via checkout) | [`0x698479ad…3545`](https://sepolia.arbiscan.io/tx/0x698479add48aa055711965108a33457357465d4e36897029f96300757fa23545) — 0.02 USDC → 0.0199 merchant + 0.0001 treasury, 100 XPoints |
 | Settled purchase (Paxos USDG via checkout, live site) | [`0x0ae5f616…0447`](https://sepolia.arbiscan.io/tx/0x0ae5f616ed692d6d3955c950a4ab8d73bb87a37162e876b8f654c52f897c0447) — 0.02 USDG → 0.0199 merchant + 0.0001 treasury |
 | Allowlisted assets | Circle USDC, **Paxos USDG** |
+| Base Sepolia | [`0x3aD9d36Fd382162E206415fF1736E78bF8326d28`](https://sepolia.basescan.org/address/0x3aD9d36Fd382162E206415fF1736E78bF8326d28) · deploy tx [`0x7b569afe…be76`](https://sepolia.basescan.org/tx/0x7b569afe3bf944e4dcd81b5d122e9323fdc4ec9c7f986b62d977b6942e4abe76) |
+| Settled purchase (Base Sepolia, USDC via checkout) | [`0xe59a1358…f642`](https://sepolia.basescan.org/tx/0xe59a1358d09517132756e5a4be1ee623061d459611de348deae718bda6f8f642) — 0.02 USDC → 0.0199 merchant + 0.0001 treasury |
+| HyperEVM Testnet | `0x3aD9d36Fd382162E206415fF1736E78bF8326d28` · deploy tx `0x5bfd20c64b7cb8041ad96f1b48c3910a72148eaac6ae35f4d45dba44a57225c7` (check with `cast receipt <tx> --rpc-url https://rpc.hyperliquid-testnet.xyz/evm`) |
 
 **Why a contract instead of a plain transfer?** With `TransferWithAuthorization`, whoever holds the signature can submit it, and nothing on-chain ties the payment to an order. BorneoCheckout fixes that:
 
@@ -160,6 +163,8 @@ npm run dev
 | Paxos USDG (Arbitrum Sepolia) | [`0xFFC95faa3d63Cde504a05B567C600B78C0b41892`](https://sepolia.arbiscan.io/token/0xFFC95faa3d63Cde504a05B567C600B78C0b41892) |
 | Paxos USDG (Arbitrum One) | [`0x004B506865409877C9fA29bfb1ebA929984B9bbC`](https://arbiscan.io/token/0x004B506865409877C9fA29bfb1ebA929984B9bbC) |
 | BorneoCheckout (Arbitrum Sepolia) | [`0xf8188490C10d0248DBB27bD1A07F8a7b4f0e9fc4`](https://sepolia.arbiscan.io/address/0xf8188490C10d0248DBB27bD1A07F8a7b4f0e9fc4) |
+| BorneoCheckout (Base Sepolia) | [`0x3aD9d36Fd382162E206415fF1736E78bF8326d28`](https://sepolia.basescan.org/address/0x3aD9d36Fd382162E206415fF1736E78bF8326d28) |
+| BorneoCheckout (HyperEVM Testnet) | `0x3aD9d36Fd382162E206415fF1736E78bF8326d28` |
 | Explorer | `https://sepolia.arbiscan.io` |
 
 ### Scripts
@@ -181,7 +186,9 @@ npm run dev
 - [ ] Presentation video (2–3 min) and product demo video (up to 3 min): intent → route → settle USDC → earn XPoints, paying on more than one chain
 - [x] Smart contract deployed on Arbitrum Sepolia, tested (unit + fuzz + fork) and verified
 - [x] Arbiscan links for settled purchases (see Smart contract section)
-- [ ] BorneoCheckout deployed on Base Sepolia and HyperEVM Testnet, with one settled purchase each
+- [x] BorneoCheckout deployed on Base Sepolia and HyperEVM Testnet; `npm run chains:check` passes on all three chains
+- [x] Settled purchase on Base Sepolia
+- [ ] Settled purchase on HyperEVM Testnet (needs testnet USDC in the buyer wallet)
 - [ ] Prior work disclosed in the submission form (see Project history above)
 - [ ] Submit before Oct 12, 2026 11:59pm PT
 

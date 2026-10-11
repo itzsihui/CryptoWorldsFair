@@ -19,7 +19,7 @@ Colosseum asks for the items below. Fill the bracketed parts before submitting.
 | Product demo video | Up to 3 minutes (shot list below) |
 | Go-to-market, demand validation, distribution | [fill in] |
 | Prior work disclosure | See "Prior work" below. Colosseum requires this in the form |
-| Onchain proof | BorneoCheckout [`0xf818…9fc4`](https://sepolia.arbiscan.io/address/0xf8188490C10d0248DBB27bD1A07F8a7b4f0e9fc4) · settled purchase [`0x6984…3545`](https://sepolia.arbiscan.io/tx/0x698479add48aa055711965108a33457357465d4e36897029f96300757fa23545) · [add Base Sepolia and HyperEVM Testnet links once deployed] |
+| Onchain proof | BorneoCheckout [`0xf818…9fc4`](https://sepolia.arbiscan.io/address/0xf8188490C10d0248DBB27bD1A07F8a7b4f0e9fc4) · settled purchase [`0x6984…3545`](https://sepolia.arbiscan.io/tx/0x698479add48aa055711965108a33457357465d4e36897029f96300757fa23545) · Base Sepolia checkout [`0x3aD9…6d28`](https://sepolia.basescan.org/address/0x3aD9d36Fd382162E206415fF1736E78bF8326d28) · settled purchase [`0xe59a…f642`](https://sepolia.basescan.org/tx/0xe59a1358d09517132756e5a4be1ee623061d459611de348deae718bda6f8f642) · HyperEVM Testnet checkout `0x3aD9d36Fd382162E206415fF1736E78bF8326d28` (deploy tx `0x5bfd20c6…25c7`) |
 
 ## Prior work
 
@@ -56,10 +56,10 @@ Added in this repository:
 | Track | Integration |
 |---|---|
 | Arbitrum | Checkout live and verified on Arbitrum Sepolia. USDC + Paxos USDG. Uniswap V3 route quotes from Arbitrum One. ETH gas bridge via the Arbitrum SDK. |
-| Base | USDC x402 on Base Sepolia / Base through the same checkout. Base is where x402 clients already operate. |
-| Hyperliquid | USDC x402 on HyperEVM Testnet / HyperEVM through the same checkout. Relayer pays gas in HYPE. |
+| Base | Checkout live on Base Sepolia with a settled USDC purchase. Base is where x402 clients already operate. |
+| Hyperliquid | Checkout live on HyperEVM Testnet, passing the on-chain preflight. Relayer pays gas in HYPE. |
 
-Base and HyperEVM need the steps in [`chains.md`](./chains.md) before they can be shown live: deploy the checkout, fund the buyer with testnet USDC and the relayer with gas, run `npm run chains:check`, then make one purchase per chain and add the explorer links above.
+The checkout is deployed on Base Sepolia and HyperEVM Testnet, and `npm run chains:check` passes on all three chains. A real USDC purchase has settled on Base Sepolia (link above). HyperEVM Testnet has no settled purchase yet; see [`chains.md`](./chains.md#verification-status).
 
 ## Demo video shot list (~3 min)
 
