@@ -1,5 +1,6 @@
 "use client";
 
+import { config } from "@/lib/config";
 import { useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import type { MarketProductPick, PaymentRail } from "../_lib/buyer-flow";
@@ -105,7 +106,7 @@ export function PaymentConsentModal({
               <dd className="text-right">
                 {isVisa
                   ? "Visa (agent-authorized card)"
-                  : `${settleSymbol} · Arbitrum Sepolia x402`}
+                  : `${settleSymbol} · ${config.chainLabel} x402`}
               </dd>
             </div>
             {!isVisa && product.tokenization ? (
@@ -153,7 +154,7 @@ export function PaymentConsentModal({
             ) : (
               <>
                 Intent → route → settle: agent checks balances, routes native →
-                settle asset on Arbitrum when needed, then x402 PAYMENT-SIGNATURE.
+                settle asset when needed, then x402 PAYMENT-SIGNATURE on {config.chainLabel}.
                 Protocol micro-fee earns you <strong>XPoints</strong> after
                 settle (merchant still receives full listed amount).
               </>

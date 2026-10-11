@@ -1,5 +1,6 @@
 "use client";
 
+import { config } from "@/lib/config";
 import { useEffect, useState } from "react";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
@@ -163,7 +164,7 @@ export function ProductPayModal({
                   <span className="mt-0.5 block text-xs text-foreground/55">
                     {product.merchantAddress
                       ? `To ${product.merchantAddress.slice(0, 6)}…${product.merchantAddress.slice(-4)}`
-                      : "Arbitrum Sepolia stablecoin"}
+                      : `${config.chainLabel} stablecoin`}
                   </span>
                 </button>
               </div>
@@ -233,7 +234,7 @@ export function ProductPayModal({
                 </>
               ) : (
                 <>
-                  Confirm x402 on Arbitrum Sepolia: transfer{" "}
+                  Confirm x402 on {config.chainLabel}: transfer{" "}
                   <strong>{product.price}</strong> USDC to merchant crypto
                   receive{" "}
                   <span className="font-mono text-xs">
