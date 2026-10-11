@@ -7,7 +7,7 @@ pdf_options:
 
 # Borneo — Project Description
 
-**Two-sided agentic commerce:** merchants publish agent-ready catalogs; buyers discover and pay in one chat — with **Visa-scoped cards** and **USDC on Arbitrum**, secured by a **CaMeL-shaped** settle lock against prompt injection.
+**Two-sided agentic commerce:** merchants publish agent-ready catalogs; buyers discover and pay in one chat — with **Visa-scoped cards** and **USDC on Arbitrum, Base and HyperEVM**, secured by a **CaMeL-shaped** settle lock against prompt injection.
 
 | | |
 |---|---|
@@ -18,7 +18,7 @@ pdf_options:
 
 ## Short answer (300 characters)
 
-Borneo is an AI shopping agent on Arbitrum. Fragmented assets mean manual swaps, and agent catalogs are walled off. Buyers chat their intent; Borneo finds items in an open registry, routes liquidity, and settles USDC via x402. CaMeL-style locked quotes stop prompt injection from redirecting funds.
+Borneo is an AI shopping agent on Arbitrum, Base and HyperEVM. Fragmented assets mean manual swaps, and agent catalogs are walled off. Buyers chat their intent; Borneo finds items in an open registry and settles USDC via x402. CaMeL-style locked quotes stop prompt injection from redirecting funds.
 
 ## Summary
 
@@ -43,7 +43,7 @@ Prompt injection is widely recognized as one of the largest unsolved problems fo
 **Borneo** is a two-sided network:
 
 - **Merchant side** — Conversational onboard (chat / CSV / URL) → bind Visa receive + wallet → publish agent-discoverable storefronts.
-- **Buyer side** — Fashion salesperson chat discovers **live** multi-merchant SKUs, builds a set/cart, and settles **in the same conversation** via Visa or USDC on Arbitrum.
+- **Buyer side** — Fashion salesperson chat discovers **live** multi-merchant SKUs, builds a set/cart, and settles **in the same conversation** via Visa or USDC on Arbitrum, Base or HyperEVM.
 
 Security is not a warning banner. Inspired by Google DeepMind / ETH Zurich **CaMeL** (*Capabilities for Machine Learning* — [arXiv:2503.18813](https://arxiv.org/abs/2503.18813)), Borneo applies a **CaMeL-shaped control-flow lock** at settle:
 
@@ -69,7 +69,7 @@ Borneo productizes that principle for commerce: **untrusted catalog data must no
 | **Buyer salesperson chat** | Intent → multi-query catalog search → ranked live SKUs (not a hardcoded aisle). |
 | **Build your set / cart** | Add multiple pieces; pay cart in chat; each SKU settles on its own locked quote. |
 | **Visa-scoped checkout** | Spend cap, merchant scope, authorize-first virtual card flow in chat. |
-| **Visa-powered stablecoin rail** | USDC settle via **HTTP 402 / x402** on Arbitrum (in-process x402 facilitator). |
+| **Visa-powered stablecoin rail** | USDC settle via **HTTP 402 / x402** on Arbitrum, Base or HyperEVM (in-process x402 facilitator, one 402 lists every accepted chain). |
 | **Liquidity route preview** | Shows a DEX route from what the buyer holds into the settle stablecoin before checkout. |
 | **Merchant agent onboard** | Inventory talk / CSV / URL → published store with agent discovery files. |
 | **Agent storefront protocol** | Agents read `/llms.txt`, `/registry.json`, `/s/{slug}/catalog.json` — **no HTML scrape**. |
@@ -86,7 +86,7 @@ Borneo productizes that principle for commerce: **untrusted catalog data must no
 | App | Next.js, React, TypeScript, Tailwind CSS, Motion |
 | Agents | OpenAI (salesperson + merchant); deterministic tool fallbacks without keys |
 | Auth / data | Firebase Auth + Firestore profiles |
-| Payments | Visa-scoped card flow (fiat-first); USDC on Arbitrum via x402 (EIP-3009) + **viem** |
+| Payments | Visa-scoped card flow (fiat-first); USDC on Arbitrum, Base and HyperEVM via x402 (EIP-3009) + **viem** |
 | Protocol | Hono-style agent endpoints; machine catalogs for discovery |
 | Security model | CaMeL-inspired quarantine reader + locked-quote settle (AgentDojo-validated design pattern) |
 | Other | Zod, MetaMask (merchant bind), local/session persistence for demo reliability |

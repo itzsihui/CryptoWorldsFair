@@ -1,4 +1,4 @@
-# Borneo × Arbitrum Open House
+# Borneo × Crypto World's Fair
 
 Source of truth for this prototype. Landing copy, demo script, and product decisions should map here.
 
@@ -51,7 +51,7 @@ Outfit demo stores: `/s/atelier-tee`, `/s/harbor-caps`, `/s/stride-kicks`.
 
 - **Buyer agent:** `/buyer`, `/api/buyer-chat` — discovers via `/llms.txt` + registry
 - **Liquidity:** `/api/liquidity` + `src/lib/liquidity/route.ts` — Uniswap V3 on Arbitrum One
-- **Crypto rail:** HTTP 402 → USDC on Arbitrum → x402 facilitator settle
+- **Crypto rail:** HTTP 402 → USDC on Arbitrum, Base or HyperEVM → x402 facilitator settle (`src/lib/chains.ts`, `docs/chains.md`)
 - **XPoints:** app-layer fee rewards (merchant still receives full listed USDC)
 
 ```mermaid
