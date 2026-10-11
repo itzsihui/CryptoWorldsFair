@@ -3,11 +3,16 @@ import {
   checkoutOrderNonce,
   createPaymentPayload,
   encodePaymentSignatureHeader,
+  readTokenBalance,
+  selectRequirement,
   type PaymentRequired,
   type PaymentRequirements,
 } from "@/lib/protocol/x402-evm";
 import { resolveBuyerTarget } from "@/lib/agents/discover";
+import { isSupportedNetwork } from "@/lib/chains";
 import {
+  chainLabelFor,
+  chainSettings,
   config,
   explorerTx,
   toAtomic,
@@ -42,10 +47,11 @@ function checkPayTo(
         };
   }
   const { checkout, merchant, orderKey, nonce } = accept.extra;
-  if (!config.checkoutAddress || !sameAddress(accept.payTo, config.checkoutAddress)) {
+  const chain = chainSettings(accept.network);
+  if (!chain.checkoutAddress || !sameAddress(accept.payTo, chain.checkoutAddress)) {
     return {
       ok: false,
-      reason: `402 payTo ${accept.payTo} is not the trusted BorneoCheckout ${config.checkoutAddress || "(unset)"}`,
+      reason: `402 payTo ${accept.payTo} is not the trusted BorneoCheckout on ${chain.label} ${chain.checkoutAddress || "(unset)"}`,
     };
   }
   if (!sameAddress(checkout, accept.payTo)) {
@@ -61,7 +67,7 @@ function checkPayTo(
     return { ok: false, reason: "402 checkout requirement missing orderKey / nonce" };
   }
   const expectedNonce = checkoutOrderNonce({
-    chainId: config.chainId,
+    chainId: chain.chainId,
     checkout: accept.payTo,
     orderKey,
     merchant: expectedMerchant,
@@ -72,6 +78,72 @@ function checkPayTo(
     return { ok: false, reason: "402 order nonce does not bind the locked merchant / amount" };
   }
   return { ok: true, viaCheckout: true };
+}
+
+/**
+ * The asset must be a stablecoin this agent knows on that chain: the chain's
+ * default token, its USDG, or (on the primary chain) the asset in the locked
+ * quote. A store cannot swap in some other token for the same numeric amount.
+ */
+function checkAsset(
+  accept: PaymentRequirements,
+  lockedAsset: string,
+): { ok: true } | { ok: false; reason: string } {
+  const chain = chainSettings(accept.network);
+  const trusted = [chain.tokenAddress, chain.usdgAddress];
+  if (accept.network === config.network) trusted.push(lockedAsset);
+  return trusted.some((t) => sameAddress(t, accept.asset))
+    ? { ok: true }
+    : {
+        ok: false,
+        reason: `402 asset ${accept.asset} is not a trusted settle token on ${chain.label}`,
+      };
+}
+
+/**
+ * Which chain to pay on when a store accepts several. BUYER_NETWORK wins when
+ * the store lists it. Otherwise take the first chain, in the store's order,
+ * where the buyer already holds enough of the settle token. A single-chain
+ * 402 is returned as is, with no balance lookups.
+ */
+async function chooseRequirement(
+  challenge: PaymentRequired,
+  buyer: string | undefined,
+): Promise<{ accept?: PaymentRequirements; note?: string }> {
+  const known = (challenge.accepts ?? []).filter(
+    (a) => a.scheme === "exact" && isSupportedNetwork(a.network),
+  );
+  if (known.length <= 1) return { accept: known[0] };
+
+  const preferred = config.buyerNetwork;
+  if (preferred) {
+    const match = selectRequirement({ accepts: known }, { network: preferred });
+    if (match) {
+      return { accept: match, note: `BUYER_NETWORK prefers ${chainLabelFor(preferred)}` };
+    }
+  }
+  if (!buyer) return { accept: known[0] };
+
+  const balances = await Promise.all(
+    known.map((a) =>
+      readTokenBalance({
+        network: a.network,
+        rpcUrl: chainSettings(a.network).rpcUrl,
+        asset: a.asset,
+        owner: buyer,
+      }).catch(() => null),
+    ),
+  );
+  const funded = known.findIndex(
+    (a, i) => balances[i] !== null && balances[i]! >= BigInt(a.amount),
+  );
+  if (funded >= 0) {
+    return {
+      accept: known[funded],
+      note: `wallet holds enough ${String(known[funded].extra?.settleSymbol || "stablecoin")} on ${chainLabelFor(known[funded].network)}`,
+    };
+  }
+  return { accept: known[0], note: "no accepted chain is funded yet" };
 }
 
 export type BuyerStep = {
@@ -107,7 +179,7 @@ export type PayQuote = {
 export { extractRequestedProduct } from "@/lib/agents/discover";
 
 /**
- * Deterministic x402 handshake on Arbitrum (USDC).
+ * Deterministic x402 handshake on the store's settlement chain(s).
  * Prefer a locked quote (slug+skuId+price). Fuzzy message/product matching
  * remains only for legacy demo paths without a quote.
  */
@@ -206,7 +278,9 @@ export async function payX402Tool(args: {
 
   steps.push({
     type: "info",
-    text: `Routing liquidity on Arbitrum (${settleSymbol} balance → Uniswap V3 if short)`,
+    text: config.isArbitrum
+      ? `Routing liquidity on Arbitrum (${settleSymbol} balance → Uniswap V3 if short)`
+      : `Checking ${settleSymbol} balance on ${config.chainLabel}`,
   });
   let routeSwapTx: string | undefined;
   let routeSummary: string | undefined;
@@ -285,10 +359,26 @@ export async function payX402Tool(args: {
     return { steps };
   }
 
-  const accept = challenge.accepts?.[0] as PaymentRequirements | undefined;
+  const buyerKey = config.buyerPrivateKey;
+  const account = buyerKey ? privateKeyToAccount(buyerKey) : undefined;
+
+  const offered = (challenge.accepts ?? []).map((a) => chainLabelFor(a.network));
+  const { accept, note } = await chooseRequirement(challenge, account?.address);
   if (!accept) {
-    steps.push({ type: "error", text: "402 missing accepts[]" });
+    steps.push({
+      type: "error",
+      text: offered.length
+        ? `402 offers no chain this agent supports (${offered.join(", ")})`
+        : "402 missing accepts[]",
+    });
     return { steps };
+  }
+  const payChain = chainLabelFor(accept.network);
+  if (offered.length > 1) {
+    steps.push({
+      type: "info",
+      text: `Store accepts ${offered.join(", ")}. Paying on ${payChain}${note ? ` (${note})` : ""}`,
+    });
   }
 
   const challengeSymbol = String(accept.extra?.settleSymbol || config.tokenSymbol);
@@ -300,6 +390,12 @@ export async function payX402Tool(args: {
       ? `Store challenge: pay ${humanAmount} to BorneoCheckout ${shortAddr(accept.payTo)} for merchant ${shortAddr(String(accept.extra?.merchant))} · order nonce ${shortAddr(String(accept.extra?.nonce))}`
       : `Store challenge: pay ${humanAmount} to merchant ${shortAddr(accept.payTo)}`,
   });
+
+  const assetCheck = checkAsset(accept, settleAsset);
+  if (!assetCheck.ok) {
+    steps.push({ type: "error", text: `Capability check failed: ${assetCheck.reason}` });
+    return { steps };
+  }
 
   const payToCheck = checkPayTo(accept, expectedPayTo);
   if (!payToCheck.ok) {
@@ -322,8 +418,7 @@ export async function payX402Tool(args: {
       : "Capability check passed: payTo + amount match locked quote",
   });
 
-  const buyerKey = config.buyerPrivateKey;
-  if (!buyerKey) {
+  if (!account) {
     emit({
       status: 402,
       method: "POST",
@@ -331,27 +426,25 @@ export async function payX402Tool(args: {
       store: slug,
       orderId,
       rail: "x402",
-      message: "402 unpaid: BUYER_PRIVATE_KEY missing, cannot sign on Arbitrum",
+      message: `402 unpaid: BUYER_PRIVATE_KEY missing, cannot sign on ${payChain}`,
     });
     steps.push({
       type: "error",
-      text: `402 is the challenge. Add BUYER_PRIVATE_KEY + funded ${config.tokenSymbol} on Arbitrum (${config.network}), then Buy again.`,
+      text: `402 is the challenge. Add BUYER_PRIVATE_KEY + funded ${challengeSymbol} on ${payChain} (${accept.network}), then Buy again.`,
     });
     return { steps, receipt: challenge as BuyerReceipt };
   }
-
-  const account = privateKeyToAccount(buyerKey);
 
   steps.push({
     type: "chain",
     text: `Signing gasless EIP-3009 ${
       payToCheck.viaCheckout ? "ReceiveWithAuthorization" : "TransferWithAuthorization"
-    }: ${humanAmount} from ${shortAddr(account.address)} on ${config.chainLabel} (buyer needs no ETH)`,
+    }: ${humanAmount} from ${shortAddr(account.address)} on ${payChain} (buyer needs no ${chainSettings(accept.network).nativeSymbol})`,
   });
 
   let paymentHeader: string;
   try {
-    const payload = await createPaymentPayload(account, challenge);
+    const payload = await createPaymentPayload(account, challenge, accept);
     paymentHeader = encodePaymentSignatureHeader(payload);
   } catch (error) {
     const reason = error instanceof Error ? error.message : "sign failed";
@@ -371,8 +464,8 @@ export async function payX402Tool(args: {
   steps.push({
     type: "chain",
     text: payToCheck.viaCheckout
-      ? "Signed. Relayer submits BorneoCheckout.settle() on Arbitrum"
-      : "Signed. Relayer submits transferWithAuthorization on Arbitrum",
+      ? `Signed. Relayer submits BorneoCheckout.settle() on ${payChain}`
+      : `Signed. Relayer submits transferWithAuthorization on ${payChain}`,
   });
 
   const second = await fetch(`${base}/buy`, {
@@ -405,7 +498,7 @@ export async function payX402Tool(args: {
     };
   }
   if (receipt.txHash && !receipt.explorerUrl) {
-    receipt.explorerUrl = explorerTx(String(receipt.txHash));
+    receipt.explorerUrl = explorerTx(String(receipt.txHash), accept.network);
   }
   if (routeSwapTx) {
     receipt.swapTxHash = routeSwapTx;
@@ -419,13 +512,16 @@ export async function payX402Tool(args: {
   if (second.ok && payToCheck.viaCheckout && receipt.feeAtomic && receipt.netToMerchantAtomic) {
     steps.push({
       type: "success",
-      text: `Settled on ${config.chainLabel}: merchant ${exactAmount(String(receipt.netToMerchantAtomic))} ${challengeSymbol} + treasury fee ${exactAmount(String(receipt.feeAtomic))} ${challengeSymbol}, in one transaction`,
+      text: `Settled on ${payChain}: merchant ${exactAmount(String(receipt.netToMerchantAtomic))} ${challengeSymbol} + treasury fee ${exactAmount(String(receipt.feeAtomic))} ${challengeSymbol}, in one transaction`,
     });
   }
   if (second.ok && receipt.explorerUrl) {
     steps.push({ type: "success", text: receipt.explorerUrl });
   } else if (second.ok && receipt.txHash) {
-    steps.push({ type: "success", text: explorerTx(String(receipt.txHash)) });
+    steps.push({
+      type: "success",
+      text: explorerTx(String(receipt.txHash), accept.network),
+    });
   }
   if (second.ok && receipt.ownershipPoints) {
     steps.push({
