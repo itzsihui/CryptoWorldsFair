@@ -1,5 +1,6 @@
 "use client";
 
+import { config } from "@/lib/config";
 import {
   FormEvent,
   useEffect,
@@ -263,7 +264,7 @@ export function MerchantChat({
                       ? "Import CSV"
                       : mode === "url"
                         ? "Store URL"
-                        : "Connect Arbitrum wallet"}
+                        : `Connect ${config.chainLabel} wallet`}
                 </p>
               </div>
 

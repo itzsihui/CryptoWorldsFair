@@ -1,5 +1,6 @@
 "use client";
 
+import { config, settleChainsLabel } from "@/lib/config";
 import { FormEvent, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -82,7 +83,7 @@ export default function MerchantSetupPage() {
       await merchant.bindWallet(proof.address);
       setBoundWallet(proof.address);
       setSeedInput("");
-      setMessage(`Arbitrum receive bound: ${shortAddress(proof.address)}`);
+      setMessage(`${config.chainLabel} receive bound: ${shortAddress(proof.address)}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Wallet bind failed");
     } finally {
@@ -95,7 +96,7 @@ export default function MerchantSetupPage() {
     setGeneratedSeed(w.privateKey);
     setSeedInput(w.privateKey);
     setMessage(
-      `Generated ${shortAddress(w.address)}. Copy the private key, fund Arbitrum Sepolia ETH + USDC, then Bind.`,
+      `Generated ${shortAddress(w.address)}. Copy the private key, fund ${config.chainLabel} ${config.nativeSymbol} + ${config.tokenSymbol}, then Bind.`,
     );
   }
 
@@ -219,12 +220,12 @@ export default function MerchantSetupPage() {
 
       <form onSubmit={(e) => void onSave(e)} className="mt-8 space-y-10">
         <section className="space-y-3">
-          <h2 className="text-sm font-medium">1. Arbitrum receiving address</h2>
+          <h2 className="text-sm font-medium">1. {config.chainLabel} receiving address</h2>
           <p className="text-xs text-foreground/55">
             Optional for the demo — skip to use{" "}
             <code className="text-[11px]">MERCHANT_ADDRESS</code> from server
             env. Bind MetaMask or a private key if you want payouts to your own
-            Arbitrum Sepolia wallet (key stays in the browser).
+            {config.chainLabel} wallet (key stays in the browser).
           </p>
           {wallet ? (
             <p className="font-mono text-sm">
@@ -260,7 +261,7 @@ export default function MerchantSetupPage() {
               {walletBusy
                 ? "Binding…"
                 : wallet
-                  ? "Re-bind Arbitrum wallet"
+                  ? `Re-bind ${config.chainLabel} wallet`
                   : seedInput.trim()
                     ? "Bind with private key"
                     : "Bind with MetaMask"}
@@ -322,7 +323,7 @@ export default function MerchantSetupPage() {
             <span>
               Accept USDC (x402)
               <span className="mt-0.5 block text-xs text-foreground/50">
-                Buyer agents can settle on Arbitrum Sepolia to your EVM address.
+                Buyer agents can settle on {settleChainsLabel()} to your EVM address.
               </span>
             </span>
           </label>
