@@ -12,7 +12,7 @@ import {
   type LocalAccount,
 } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
-import { arbitrum, arbitrumSepolia } from "viem/chains";
+import { chainPreset } from "@/lib/chains";
 
 /** x402 v2 wire types (`exact` scheme, EIP-3009 on EVM). */
 export type PaymentRequirements = {
@@ -237,10 +237,8 @@ function chainIdOf(network: string): number {
 }
 
 function chainFor(network: string) {
-  const id = chainIdOf(network);
-  if (id === arbitrum.id) return arbitrum;
-  if (id === arbitrumSepolia.id) return arbitrumSepolia;
-  throw new Error(`Unsupported network: ${network} (Arbitrum One or Sepolia only)`);
+  chainIdOf(network);
+  return chainPreset(network).viemChain;
 }
 
 function authorizationType(requirements: PaymentRequirements): AuthorizationType {
@@ -309,12 +307,36 @@ export function decodePaymentSignatureHeader(header: string): PaymentPayload {
   return decoded;
 }
 
-/** Buyer side: sign an EIP-3009 authorization for the first accepted requirement. */
+const sameText = (a?: string, b?: string) =>
+  !!a && !!b && a.trim().toLowerCase() === b.trim().toLowerCase();
+
+/**
+ * Pick one requirement out of a 402 challenge. A multi-chain store lists one
+ * `accepts` entry per chain; `network` (and optionally `asset`) selects among
+ * them. Returns undefined when the store does not accept that chain.
+ */
+export function selectRequirement(
+  challenge: Pick<PaymentRequired, "accepts">,
+  want?: { network?: string; asset?: string },
+): PaymentRequirements | undefined {
+  const accepts = (challenge.accepts ?? []).filter((a) => a.scheme === "exact");
+  if (!want?.network && !want?.asset) return accepts[0];
+  return accepts.find(
+    (a) =>
+      (!want.network || a.network === want.network) &&
+      (!want.asset || sameText(a.asset, want.asset)),
+  );
+}
+
+/**
+ * Buyer side: sign an EIP-3009 authorization. Signs `accepted` when given
+ * (must be one of the challenge's entries), otherwise the first requirement.
+ */
 export async function createPaymentPayload(
   account: LocalAccount,
   challenge: PaymentRequired,
+  accepted: PaymentRequirements | undefined = selectRequirement(challenge),
 ): Promise<PaymentPayload> {
-  const accepted = challenge.accepts?.[0];
   if (!accepted || accepted.scheme !== "exact") {
     throw new Error("No `exact` payment requirement in 402 challenge");
   }
@@ -343,11 +365,12 @@ export async function createPaymentPayload(
 }
 
 /**
- * Facilitator for x402 `exact` payments on Arbitrum: verifies EIP-3009
+ * Facilitator for x402 `exact` payments on one EVM chain: verifies EIP-3009
  * authorizations and relays them (relayer pays gas). Direct mode calls
  * `transferWithAuthorization`; checkout mode calls `BorneoCheckout.settle`.
+ * Create one per chain; see lib/chains.ts for the supported set.
  */
-export class ArbitrumFacilitator {
+export class EvmFacilitator {
   private readonly publicClient;
   private readonly walletClient;
   private readonly chainId: number;
@@ -569,4 +592,28 @@ export class ArbitrumFacilitator {
       };
     }
   }
+}
+
+/** @deprecated Renamed to EvmFacilitator now that it serves every supported chain. */
+export const ArbitrumFacilitator = EvmFacilitator;
+export type ArbitrumFacilitator = EvmFacilitator;
+
+/** Token balance of `owner`, for choosing which chain a buyer can pay on. */
+export async function readTokenBalance(args: {
+  network: string;
+  rpcUrl: string;
+  asset: string;
+  owner: string;
+  timeoutMs?: number;
+}): Promise<bigint> {
+  const client = createPublicClient({
+    chain: chainFor(args.network),
+    transport: http(args.rpcUrl, { timeout: args.timeoutMs ?? 4_000, retryCount: 0 }),
+  });
+  return client.readContract({
+    address: getAddress(args.asset),
+    abi: eip3009Abi,
+    functionName: "balanceOf",
+    args: [getAddress(args.owner)],
+  });
 }
