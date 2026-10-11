@@ -1,5 +1,6 @@
 "use client";
 
+import { config } from "@/lib/config";
 import { useEffect, useMemo, useState } from "react";
 import {
   cartSettlementTotal,
@@ -174,7 +175,7 @@ export function LiquidityMapPanel({
                 </p>
                 {route.quote.mode === "mainnet-preview" ? (
                   <p className="mt-0.5 text-foreground/55">
-                    Settlement (x402 USDC) runs on Arbitrum Sepolia (421614). This
+                    Settlement (x402 {config.tokenSymbol}) runs on {config.chainLabel} ({config.chainId}). This
                     quote is never executed.
                   </p>
                 ) : null}
