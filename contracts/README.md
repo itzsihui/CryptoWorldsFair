@@ -1,10 +1,12 @@
 # BorneoCheckout contracts
 
-Foundry workspace for `BorneoCheckout`, the x402 settlement contract Borneo uses on Arbitrum. See the [root README](../README.md#smart-contract-borneocheckout) for the design.
+Foundry workspace for `BorneoCheckout`, the x402 settlement contract Borneo uses on Arbitrum, Base and HyperEVM. The contract is identical on every chain; only the allowlisted stablecoins differ. See the [root README](../README.md#smart-contract-borneocheckout) for the design and [`docs/chains.md`](../docs/chains.md) for the chain list.
 
 | Network | Address |
 |---|---|
 | Arbitrum Sepolia | [`0xf8188490C10d0248DBB27bD1A07F8a7b4f0e9fc4`](https://sepolia.arbiscan.io/address/0xf8188490C10d0248DBB27bD1A07F8a7b4f0e9fc4) |
+| Base Sepolia | not deployed yet |
+| HyperEVM Testnet | not deployed yet |
 
 ## Commands
 
@@ -13,9 +15,11 @@ forge build
 forge test                                                     # unit + fuzz (mock EIP-3009 token)
 forge test --match-contract Fork --fork-url https://sepolia-rollup.arbitrum.io/rpc   # real USDC + Paxos USDG
 
-# Deploy (USDC + USDG allowlisted for the target chain)
+# Deploy. --rpc-url takes any alias from foundry.toml: arbitrum_sepolia, arbitrum_one,
+# base_sepolia, base, hyperevm_testnet, hyperevm. The stablecoins allowlisted for that
+# chain come from script/SettleTokens.sol (USDC everywhere, plus USDG on Arbitrum).
 DEPLOYER_PRIVATE_KEY=0x… TREASURY_ADDRESS=0x… PROTOCOL_FEE_BPS=50 \
-  forge script script/DeployBorneoCheckout.s.sol --rpc-url https://sepolia-rollup.arbitrum.io/rpc --broadcast
+  forge script script/DeployBorneoCheckout.s.sol --rpc-url base_sepolia --broadcast
 
 # Verify (Blockscout, no key) or Arbiscan (ARBISCAN_API_KEY)
 forge verify-contract <address> src/BorneoCheckout.sol:BorneoCheckout \
@@ -24,4 +28,6 @@ forge verify-contract <address> src/BorneoCheckout.sol:BorneoCheckout \
   --constructor-args $(cast abi-encode "constructor(address,address,uint16,address[])" <owner> <treasury> 50 "[<usdc>,<usdg>]")
 ```
 
-Then set `CHECKOUT_ADDRESS` in the app's `.env`.
+Then set `CHECKOUT_ADDRESS_<chainId>` in the app's `.env` (for example `CHECKOUT_ADDRESS_84532` for Base Sepolia) and run `npm run chains:check` from the repo root.
+
+Each order nonce commits to `block.chainid` and the checkout's own address, so an authorization signed for one chain cannot be settled on another. `test_revert_authorizationSignedForAnotherChain` covers this.
