@@ -1,5 +1,6 @@
 "use client";
 
+import { config } from "@/lib/config";
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -171,7 +172,7 @@ export default function DashboardPage() {
                   href="/onboard"
                   className="mt-1 inline-block text-xs text-primary hover:underline"
                 >
-                  Bind Arbitrum wallet on onboard
+                  Bind {config.chainLabel} wallet on onboard
                 </Link>
               )}
             </div>
@@ -285,7 +286,7 @@ export default function DashboardPage() {
                       <TableCell>
                         {order.rail === "straitsx-card"
                           ? "Visa card"
-                          : "x402 Arbitrum Sepolia"}
+                          : `x402 ${config.chainLabel}`}
                       </TableCell>
                       <TableCell>
                         <Badge
@@ -304,7 +305,7 @@ export default function DashboardPage() {
                             target="_blank"
                             rel="noreferrer"
                           >
-                            Arbitrum explorer
+                            Block explorer
                           </a>
                         ) : order.mandate?.cardOpaqueId ? (
                           <span className="font-mono text-xs">
