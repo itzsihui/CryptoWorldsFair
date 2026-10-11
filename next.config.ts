@@ -5,6 +5,14 @@ const nextConfig: NextConfig = {
   turbopack: {
     root: path.join(__dirname),
   },
+  // Client components label the settlement chain, so mirror the server-side
+  // chain selection into the bundle. Rebuild after changing either value.
+  env: {
+    NEXT_PUBLIC_CHAIN_NETWORK:
+      process.env.NEXT_PUBLIC_CHAIN_NETWORK || process.env.CHAIN_NETWORK || "",
+    NEXT_PUBLIC_SETTLE_NETWORKS:
+      process.env.NEXT_PUBLIC_SETTLE_NETWORKS || process.env.SETTLE_NETWORKS || "",
+  },
   // ethers v5 (used by @arbitrum/sdk) breaks on Next's patched fetch when bundled.
   serverExternalPackages: ["@arbitrum/sdk", "ethers"],
   images: {
