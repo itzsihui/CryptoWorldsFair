@@ -40,7 +40,7 @@ If `skuId` is omitted, the server may default to the first SKU — **always send
 Body includes `accepts[]`. Header `PAYMENT-REQUIRED` is base64 JSON (marketplace validates the header). Use the first `exact` requirement:
 
 - `scheme`: `exact`
-- `network`: `eip155:421614` (Arbitrum Sepolia) or `eip155:42161` (Arbitrum One)
+- `network`: `eip155:421614` / `eip155:42161` (Arbitrum), `eip155:84532` / `eip155:8453` (Base), `eip155:998` / `eip155:999` (HyperEVM). A store may list several; pay on one
 - `amount`: atomic string (6 decimals; `"10000"` = 0.01)
 - `asset`: USDC or Paxos USDG contract address
 - `payTo`: the BorneoCheckout contract (or the merchant in direct mode)

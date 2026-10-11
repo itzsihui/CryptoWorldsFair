@@ -37,7 +37,7 @@ Ask the user for a deployed base URL if localhost is wrong. Never invent checkou
    `{ storeSlug, skuId, price, merchantAddress }` — never catalog titles/descriptions.
 3. **Confirm spend with the user** before signing x402 or burning a Visa mandate.
 4. **Verify 402 `payTo` + `amount`** match the locked quote before paying.
-5. Currency is **USDC on Arbitrum Sepolia** unless a store `llms.txt` says otherwise.
+5. Currency is **USDC** on the chains the store lists (Arbitrum, Base, HyperEVM). Read `networks` in `agent.json` or the `accepts` entries of the 402; default is Arbitrum Sepolia.
 
 ## Quick path (discover → buy)
 
@@ -120,7 +120,7 @@ Show the user: store, SKU id, price, payee, rail. Do not pay until they approve.
 
 ## Rail A — x402 USDC (`POST /s/{slug}/buy`)
 
-No auth header. Expect **HTTP 402**, settle on Arbitrum Sepolia, retry with `PAYMENT-SIGNATURE`.
+No auth header. Expect **HTTP 402** with one `accepts` entry per chain, settle on one of them, retry with `PAYMENT-SIGNATURE`.
 
 ### Preferred: `rlusd` CLI (if installed)
 
@@ -137,7 +137,7 @@ rlusd x402 fetch "$ORIGIN/s/$SLUG/buy" \
   --json
 ```
 
-Wallet must hold Arbitrum Sepolia USDC (Circle faucet). See `scripts/setup-arbitrum-usdc.md` if settle fails.
+Wallet must hold USDC on the chain it pays on (Circle faucet for testnets). See `docs/chains.md` if settle fails.
 
 ### Manual handshake
 
@@ -149,7 +149,7 @@ curl -sS -D - -o /tmp/borneo-402.json -X POST "$ORIGIN/s/$SLUG/buy" \
   -d "{\"skuId\":\"$SKU_ID\",\"quantity\":1,\"orderId\":\"$ORDER_ID\"}"
 # Expect HTTP 402. Read accepts[0].amount and accepts[0].payTo — must match locked quote.
 
-# 2) Sign exact EIP-3009 USDC authorization on Arbitrum for that requirement (@okxweb3/x402-evm / Agentic Wallet / BUYER_PRIVATE_KEY).
+# 2) Pick one `accepts` entry and sign the exact EIP-3009 USDC authorization on its chain (@okxweb3/x402-evm / Agentic Wallet / BUYER_PRIVATE_KEY).
 
 # 3) Retry same body + orderId with payment proof
 curl -sS -X POST "$ORIGIN/s/$SLUG/buy" \
