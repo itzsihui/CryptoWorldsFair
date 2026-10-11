@@ -7,7 +7,8 @@ import {
   http,
 } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
-import { arbitrum, arbitrumSepolia } from "viem/chains";
+import { arbitrum } from "viem/chains";
+import { chainPreset } from "@/lib/chains";
 import {
   config,
   explorerTx,
@@ -135,7 +136,7 @@ export type LiquidityRouteResult = {
 };
 
 function settleChain() {
-  return config.chainId === arbitrum.id ? arbitrum : arbitrumSepolia;
+  return chainPreset(config.network).viemChain;
 }
 
 function settleClient() {
@@ -364,6 +365,20 @@ export async function ensureSettleLiquidity(args: {
       quote: null,
       executed: false,
       message: `No buyer wallet — set BUYER_PRIVATE_KEY to route liquidity on ${config.chainLabel}`,
+    };
+  }
+
+  if (!config.isArbitrum) {
+    // The Uniswap route is Arbitrum-only. Elsewhere the buyer pays straight
+    // from its stablecoin balance, so report the balance and stop.
+    return {
+      needed: !balances.hasEnoughToken,
+      balances,
+      quote: null,
+      executed: false,
+      message: balances.hasEnoughToken
+        ? `${toSymbol} balance ${balances.tokenHuman} covers purchase on ${config.chainLabel}`
+        : `Need ${formatUnits(BigInt(balances.shortfallAtomic), config.tokenDecimals)} more ${toSymbol} on ${config.chainLabel}. Auto-swap is only available on Arbitrum, so fund the wallet directly.`,
     };
   }
 
