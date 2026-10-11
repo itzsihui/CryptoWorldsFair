@@ -2,14 +2,16 @@
 
 # Borneo
 
-[![Arbitrum](https://img.shields.io/badge/Arbitrum-USDC%20x402-12AAFF?style=for-the-badge)](#borneo)
+[![Arbitrum](https://img.shields.io/badge/Arbitrum-USDC%20x402-12AAFF?style=for-the-badge)](#chains)
+[![Base](https://img.shields.io/badge/Base-USDC%20x402-0052FF?style=for-the-badge)](#chains)
+[![HyperEVM](https://img.shields.io/badge/HyperEVM-USDC%20x402-50D2C1?style=for-the-badge)](#chains)
 [![Agentic commerce](https://img.shields.io/badge/Agentic-commerce-0B6E4F?style=for-the-badge)](#borneo)
 [![Protocol](https://img.shields.io/badge/Open%20protocol-any%20HTTP%20agent-23292F?style=for-the-badge)](#borneo)
 [![Next.js](https://img.shields.io/badge/Next.js-black?style=for-the-badge&logo=next.js&logoColor=white)](https://nextjs.org/)
 
-**Intent → route → settle → earn. AI shopping agents that pay in USDC on Arbitrum.**
+**Intent → route → settle → earn. AI shopping agents that pay in USDC on Arbitrum, Base and HyperEVM.**
 
-Landing → [http://localhost:3000](http://localhost:3000) · Setup → [`scripts/setup-arbitrum-usdc.md`](./scripts/setup-arbitrum-usdc.md)
+Landing → [http://localhost:3000](http://localhost:3000) · Chains → [`docs/chains.md`](./docs/chains.md) · Arbitrum setup → [`scripts/setup-arbitrum-usdc.md`](./scripts/setup-arbitrum-usdc.md)
 
 </div>
 
@@ -19,22 +21,39 @@ Landing → [http://localhost:3000](http://localhost:3000) · Setup → [`script
 
 Users hold fragmented assets. Buying products, tokenized RWAs, or micro-payments usually means manual swaps and separate rails. Agent catalogs are often walled inside a few chat apps, and agents have no safe, open way to pay merchants.
 
-## Borneo @ Arbitrum Open House
+## Borneo @ Crypto World's Fair
 
-**An AI-native shopping agent** takes natural-language intent, **routes liquidity** into USDC, **settles with x402 on Arbitrum**, and credits **XPoints** from a protocol micro-fee — so conversion is seamless *and* users earn rewards. Any HTTP agent can shop any Borneo store: the store answers `402 Payment Required`, the agent signs a USDC authorization, and settlement lands on Arbitrum in one round trip.
+**An AI-native shopping agent** takes natural-language intent, **routes liquidity** into USDC, **settles with x402**, and credits **XPoints** from a protocol micro-fee — so conversion is seamless *and* users earn rewards. Any HTTP agent can shop any Borneo store: the store answers `402 Payment Required` listing every chain it accepts, the agent signs a USDC authorization for one of them, and settlement lands on that chain in one round trip.
 
 ```mermaid
 flowchart LR
   intent[Intent_chat] --> route[Liquidity_route]
-  route --> settle[USDC_x402_Arbitrum]
-  settle --> earn[XPoints]
+  route --> settle[USDC_x402]
+  settle --> arb[Arbitrum]
+  settle --> base[Base]
+  settle --> hyper[HyperEVM]
+  arb --> earn[XPoints]
+  base --> earn
+  hyper --> earn
 ```
+
+### Chains
+
+| Chain | Testnet | Mainnet | Settle token | BorneoCheckout |
+|---|---|---|---|---|
+| Arbitrum | `eip155:421614` | `eip155:42161` | USDC, Paxos USDG | Live on Arbitrum Sepolia |
+| Base | `eip155:84532` | `eip155:8453` | USDC | Deploy with the same script |
+| HyperEVM | `eip155:998` | `eip155:999` | USDC | Deploy with the same script |
+
+One codebase and one contract serve all three. `CHAIN_NETWORK` picks the primary chain and `SETTLE_NETWORKS` adds more, so a single 402 can offer several chains and the buyer agent pays on the first one where its wallet holds enough. The Uniswap route quote and the ETH gas bridge are Arbitrum features and switch off elsewhere. Setup, deploy commands and what is and isn't verified: [`docs/chains.md`](./docs/chains.md).
+
+> **Project history.** Borneo was first built for the Arbitrum Open House Buildathon ([itzsihui/ArbitrumBuildathon](https://github.com/itzsihui/ArbitrumBuildathon), commits from Oct 3 2026). This repository continues that codebase for Crypto World's Fair. Multi-chain settlement (Base, HyperEVM, per-chain 402 entries, on-chain EIP-712 domain checks) is the work added here.
 
 | Step | Surface |
 |---|---|
 | Intent | `/buyer` salesperson + `GET /api/search` |
 | Route | `GET/POST /api/liquidity` · Uniswap V3 quote (Arbitrum One) · outfit liquidity map |
-| Buy (x402) | `POST /s/{slug}/buy` → **402** → sign EIP-3009 → settle on Arbitrum |
+| Buy (x402) | `POST /s/{slug}/buy` → **402** → sign EIP-3009 → settle on Arbitrum, Base or HyperEVM |
 | Earn | `/buyer/xpoints` · invite `?ref=` boost |
 | Outfit demo | `/s/atelier-tee` · `/s/harbor-caps` · `/s/stride-kicks` |
 | RWA demo | `/s/arbitrum-rwa-desk` tokenized claim SKUs |
@@ -42,14 +61,14 @@ flowchart LR
 
 **Do not scrape HTML.** Catalog prose never enters the pay path — settle only sees a locked quote (`storeSlug`, `skuId`, `price`, `merchantAddress`). XPoints are a rewards ledger driven by the protocol fee (not a token or security).
 
-### How settlement works on Arbitrum
+### How settlement works
 
-1. `POST /s/{slug}/buy` without payment returns `402` with a `PAYMENT-REQUIRED` header: `exact` scheme, `eip155:421614`, amount, asset (USDC or Paxos USDG), and `payTo` = the **BorneoCheckout** contract. `extra` carries the merchant, the on-chain order key and the **order-bound nonce**.
-2. The buyer agent signs an EIP-3009 `ReceiveWithAuthorization` for exactly that amount, to the checkout, using that nonce.
+1. `POST /s/{slug}/buy` without payment returns `402` with a `PAYMENT-REQUIRED` header. `accepts` holds one `exact` entry per settlement chain: network (`eip155:421614`, `eip155:84532`, ...), amount, asset (USDC or Paxos USDG), and `payTo` = that chain's **BorneoCheckout** contract. `extra` carries the merchant, the on-chain order key and the **order-bound nonce**, which differs per chain.
+2. The buyer agent picks one entry and signs an EIP-3009 `ReceiveWithAuthorization` for exactly that amount, to the checkout, using that nonce.
 3. Borneo's x402 facilitator verifies signature, balance, amount, time window and nonce off-chain, then relays `BorneoCheckout.settle(...)` (relayer pays gas, buyer needs no ETH).
-4. The contract pulls the funds, pays the merchant `amount − fee`, sends the fee to the treasury, credits on-chain XPoints and emits `OrderSettled`. The receipt carries the Arbiscan `txHash` and the on-chain fee split.
+4. The contract pulls the funds, pays the merchant `amount − fee`, sends the fee to the treasury, credits on-chain XPoints and emits `OrderSettled`. The receipt carries the chain, the explorer `txHash` link and the on-chain fee split.
 
-Without `CHECKOUT_ADDRESS`, Borneo falls back to a direct `TransferWithAuthorization` to the merchant.
+An order settles once, on one chain. The server verifies against its own requirement for the chain the buyer signed for, never the buyer's copy, and holds the order until the paid record is stored. On a chain with no checkout address, Borneo falls back to a direct `TransferWithAuthorization` to the merchant.
 
 ## Smart contract: `BorneoCheckout`
 
@@ -66,21 +85,23 @@ Without `CHECKOUT_ADDRESS`, Borneo falls back to a direct `TransferWithAuthoriza
 **Why a contract instead of a plain transfer?** With `TransferWithAuthorization`, whoever holds the signature can submit it, and nothing on-chain ties the payment to an order. BorneoCheckout fixes that:
 
 - **Order-bound nonce.** The EIP-3009 nonce must equal `keccak256(ORDER_TYPEHASH, chainId, checkout, orderId, merchant, token, amount)`. A relayer cannot redirect funds to another merchant, change amount or token, or reuse the signature for a different order. Changing any field breaks either the nonce check or the token's signature check.
+- **No cross-chain replay.** `chainId` is part of the nonce and of the token's EIP-712 domain, so an authorization signed for Base cannot settle on Arbitrum or HyperEVM, even where the checkout has the same address.
 - **Front-run safe.** `ReceiveWithAuthorization` can only be redeemed by the payee (the checkout), so the signature cannot be lifted from the mempool and replayed against the token directly.
 - **Exactly-once orders.** Each `orderId` settles once (`OrderAlreadySettled`); token-level nonces stop replays across contracts.
 - **On-chain fee split + XPoints.** `fee = amount × feeBps / 10 000` (hard cap 10%) goes to the treasury, the rest to the merchant in the same tx; the payer's `xpoints` accrue 1:1 with fee units. The contract never holds a balance after settlement; a balance-delta check guards against non-standard tokens.
 - **Ops safety.** `Ownable2Step`, `Pausable`, `ReentrancyGuard`, `SafeERC20`, token allowlist, custom errors, `sweep` for stray tokens.
 
-**Tests:** 22 unit tests + 1 000-run fuzz (value conservation) against a mock EIP-3009 token, covering redirect, recomputed nonce, amount/token swap, random nonce, double settle, front-running, expiry, wrong payer, pause and admin paths, plus **fork tests that settle through the real Arbitrum Sepolia USDC and Paxos USDG contracts**.
+**Tests:** 29 Foundry tests including a 1 000-run fuzz (value conservation) against a mock EIP-3009 token, covering redirect, recomputed nonce, amount/token swap, random nonce, double settle, front-running, expiry, wrong payer, cross-chain replay, per-chain token allowlists, pause and admin paths, plus **fork tests that settle through the real Arbitrum Sepolia USDC and Paxos USDG contracts**. `npm test` adds 14 offline tests for the chain registry, per-chain 402 entries and signatures.
 
 ```bash
 cd contracts
 forge test                                                      # unit + fuzz
 forge test --match-contract Fork --fork-url https://sepolia-rollup.arbitrum.io/rpc   # real USDC + USDG
-DEPLOYER_PRIVATE_KEY=0x… forge script script/DeployBorneoCheckout.s.sol --rpc-url https://sepolia-rollup.arbitrum.io/rpc --broadcast
+# Deploy to any chain alias in foundry.toml: arbitrum_sepolia, base_sepolia, hyperevm_testnet, ...
+DEPLOYER_PRIVATE_KEY=0x… forge script script/DeployBorneoCheckout.s.sol --rpc-url base_sepolia --broadcast
 ```
 
-End-to-end against a running server: `npx tsx --env-file=.env scripts/e2e-checkout.mts http://localhost:3000 atelier-tee`.
+End-to-end against a running server: `npx tsx --env-file=.env scripts/e2e-checkout.mts http://localhost:3000 atelier-tee "" base-sepolia` (the last argument picks the chain to pay on).
 
 ---
 
@@ -90,8 +111,9 @@ End-to-end against a running server: `npx tsx --env-file=.env scripts/e2e-checko
 npm install
 cp .env.example .env
 # Fill BUYER_PRIVATE_KEY, MERCHANT_ADDRESS, Firebase, OPENAI
-# Fund the buyer with Arbitrum Sepolia USDC + a little ETH
-# See scripts/setup-arbitrum-usdc.md
+# Fund the buyer with testnet USDC, and the relayer with a little gas, on each chain you enable
+# See docs/chains.md (all chains) and scripts/setup-arbitrum-usdc.md (Arbitrum walkthrough)
+npm run chains:check   # preflight: RPC, token, EIP-712 domain, checkout, relayer gas
 npm run dev
 ```
 
@@ -113,11 +135,14 @@ npm run dev
 |---|---|
 | `OPENAI_API_KEY` | Agents + embeddings search |
 | `NEXT_PUBLIC_FIREBASE_*` | Buyer + merchant auth |
-| `CHAIN_NETWORK` | `eip155:421614` (Arbitrum Sepolia, default) or `eip155:42161` (Arbitrum One) |
+| `CHAIN_NETWORK` | Primary chain. `eip155:421614` (Arbitrum Sepolia, default), `eip155:42161`, `eip155:84532`, `eip155:8453` (Base), `eip155:998`, `eip155:999` (HyperEVM). Labels such as `base-sepolia` also work |
+| `SETTLE_NETWORKS` | Extra chains to accept on the same 402, comma-separated, e.g. `base-sepolia,hyperevm-testnet` |
+| `BUYER_NETWORK` | Chain the buyer agent prefers. Unset: first accepted chain where it holds enough |
 | `BUYER_PRIVATE_KEY` | Server-side x402 signing |
-| `FACILITATOR_PRIVATE_KEY` | Optional relayer for settlement gas (defaults to buyer key) |
+| `FACILITATOR_PRIVATE_KEY` | Optional relayer for settlement gas (defaults to buyer key). Needs ETH on Arbitrum and Base, HYPE on HyperEVM |
 | `MERCHANT_ADDRESS` | Default merchant payTo (`0x…`) |
-| `CHECKOUT_ADDRESS` | BorneoCheckout contract; when set, all x402 payments settle through it |
+| `CHECKOUT_ADDRESS_<chainId>` | BorneoCheckout on that chain, e.g. `CHECKOUT_ADDRESS_84532`. When set, x402 payments there settle through it. `CHECKOUT_ADDRESS` still works for the primary chain |
+| `RPC_URL_<chainId>` | RPC override for a non-primary chain (`RPC_URL` for the primary) |
 | `ALT_SETTLE_TOKEN` / `ALT_SETTLE_SYMBOL` | Second settle asset (defaults to Paxos USDG) |
 | `PROTOCOL_FEE_BPS` | Fee in bps (default `50`); match the contract's `feeBps` |
 | `TREASURY_ADDRESS` | Fee recipient (the checkout's `treasury`) |
@@ -128,6 +153,10 @@ npm run dev
 |---|---|
 | USDC (Arbitrum Sepolia) | [`0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d`](https://sepolia.arbiscan.io/token/0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d) |
 | USDC (Arbitrum One) | [`0xaf88d065e77c8cC2239327C5EDb3A432268e5831`](https://arbiscan.io/token/0xaf88d065e77c8cC2239327C5EDb3A432268e5831) |
+| USDC (Base Sepolia) | [`0x036CbD53842c5426634e7929541eC2318f3dCF7e`](https://sepolia.basescan.org/token/0x036CbD53842c5426634e7929541eC2318f3dCF7e) |
+| USDC (Base) | [`0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913`](https://basescan.org/token/0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913) |
+| USDC (HyperEVM Testnet) | `0x2B3370eE501B4a559b57D449569354196457D8Ab` |
+| USDC (HyperEVM) | [`0xb88339CB7199b77E23DB6E890353E22632Ba630f`](https://hyperevmscan.io/token/0xb88339CB7199b77E23DB6E890353E22632Ba630f) |
 | Paxos USDG (Arbitrum Sepolia) | [`0xFFC95faa3d63Cde504a05B567C600B78C0b41892`](https://sepolia.arbiscan.io/token/0xFFC95faa3d63Cde504a05B567C600B78C0b41892) |
 | Paxos USDG (Arbitrum One) | [`0x004B506865409877C9fA29bfb1ebA929984B9bbC`](https://arbiscan.io/token/0x004B506865409877C9fA29bfb1ebA929984B9bbC) |
 | BorneoCheckout (Arbitrum Sepolia) | [`0xf8188490C10d0248DBB27bD1A07F8a7b4f0e9fc4`](https://sepolia.arbiscan.io/address/0xf8188490C10d0248DBB27bD1A07F8a7b4f0e9fc4) |
@@ -140,16 +169,20 @@ npm run dev
 | `npm run dev` | Local Next.js |
 | `npm run build` / `npm start` | Production |
 | `npm run lint` | ESLint |
+| `npm test` | Offline multi-chain tests (no RPC needed) |
+| `npm run chains:check` | Check each enabled chain against its live RPC before settling |
 
 ---
 
-## Submission checklist (Arbitrum Open House Buildathon)
+## Submission checklist (Crypto World's Fair)
 
 - [ ] Public repo + this README
 - [ ] Live product URL
-- [ ] Demo video 2–4 min: intent → route → settle USDC on Arbitrum → earn XPoints (+ optional RWA SKU)
+- [ ] Presentation video (2–3 min) and product demo video (up to 3 min): intent → route → settle USDC → earn XPoints, paying on more than one chain
 - [x] Smart contract deployed on Arbitrum Sepolia, tested (unit + fuzz + fork) and verified
-- [x] Arbiscan links for at least one settled purchase (see Smart contract section)
-- [ ] Submit by the Buildathon deadline (Oct 4, 2026)
+- [x] Arbiscan links for settled purchases (see Smart contract section)
+- [ ] BorneoCheckout deployed on Base Sepolia and HyperEVM Testnet, with one settled purchase each
+- [ ] Prior work disclosed in the submission form (see Project history above)
+- [ ] Submit before Oct 12, 2026 11:59pm PT
 
-See [`docs/submission.md`](./docs/submission.md) for the shot list.
+See [`docs/submission.md`](./docs/submission.md) for the track mapping and shot list.
