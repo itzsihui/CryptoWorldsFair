@@ -19,7 +19,11 @@ Landing → [http://localhost:3000](http://localhost:3000) · Chains → [`docs/
 
 ## The problem
 
-Users hold fragmented assets. Buying products, tokenized RWAs, or micro-payments usually means manual swaps and separate rails. Agent catalogs are often walled inside a few chat apps, and agents have no safe, open way to pay merchants.
+More people are sending AI buyer agents to shop for them, but sellers aren't ready: for every 10 buyer agents there is roughly 1 seller agent. Most storefronts are built for humans, so agents scrape pages or give up, and merchants lose buyers they never see.
+
+Paying is just as hard. Users hold fragmented assets, so buying products, tokenized RWAs, or micro-payments usually means manual swaps and separate rails. Agent catalogs are often walled inside a few chat apps, and agents have no safe, open way to pay merchants.
+
+Borneo makes any online store readable by AI agents in seconds, and lets agents pay safely in USDC on Arbitrum, Base and HyperEVM.
 
 ## Borneo @ Crypto World's Fair
 
